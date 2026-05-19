@@ -9,8 +9,9 @@ if (Test-Path $out) {
 
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 
-dotnet restore $project -r win-x64
-dotnet publish $project -c Release -r win-x64 --self-contained true -p:Platform=x64 --no-restore -o $out
+dotnet restore $project
+dotnet build $project -c Release -p:Platform=x64 --no-restore
+dotnet publish $project -c Release -r win-x64 --self-contained true -p:Platform=x64 --no-build -o $out
 
 Write-Host ""
 Write-Host "Build complete: $out"

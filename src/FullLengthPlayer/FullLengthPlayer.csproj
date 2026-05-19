@@ -9,6 +9,8 @@
     <RootNamespace>FullLengthPlayer</RootNamespace>
     <ApplicationIcon></ApplicationIcon>
     <Platforms>x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
