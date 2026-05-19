@@ -21,8 +21,21 @@ jobs:
       - name: Restore
         run: dotnet restore src/FullLengthPlayer/FullLengthPlayer.csproj
 
+      - name: Build
+        run: dotnet build src/FullLengthPlayer/FullLengthPlayer.csproj -c Release -p:Platform=x64 --no-restore
+
       - name: Publish win-x64
-        run: dotnet publish src/FullLengthPlayer/FullLengthPlayer.csproj -c Release -r win-x64 --self-contained true -o publish/FullLengthPlayer-win-x64
+        run: dotnet publish src/FullLengthPlayer/FullLengthPlayer.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 --no-build -o publish/FullLengthPlayer-win-x64
+
+      - name: Validate publish output
+        shell: pwsh
+        run: |
+          if (!(Test-Path "publish/FullLengthPlayer-win-x64/FullLengthPlayer.exe")) {
+            throw "FullLengthPlayer.exe was not published"
+          }
+          if (!(Test-Path "publish/FullLengthPlayer-win-x64/libvlc.dll")) {
+            throw "libvlc.dll missing from published output"
+          }
 
       - name: Zip artifact
         shell: pwsh
