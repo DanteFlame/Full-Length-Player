@@ -33,8 +33,21 @@ jobs:
           if (!(Test-Path "publish/FullLengthPlayer-win-x64/FullLengthPlayer.exe")) {
             throw "FullLengthPlayer.exe was not published"
           }
-          if (!(Test-Path "publish/FullLengthPlayer-win-x64/libvlc.dll")) {
-            throw "libvlc.dll missing from published output"
+          $libvlcPaths = @(
+            "publish/FullLengthPlayer-win-x64/libvlc.dll",
+            "publish/FullLengthPlayer-win-x64/libvlc/win-x64/libvlc.dll"
+          )
+
+          $hasLibVlc = $false
+          foreach ($path in $libvlcPaths) {
+            if (Test-Path $path) {
+              $hasLibVlc = $true
+              break
+            }
+          }
+
+          if (!$hasLibVlc) {
+            throw "libvlc.dll missing from published output (checked root and libvlc/win-x64)"
           }
 
       - name: Zip artifact
