@@ -1,0 +1,36 @@
+name: Build Windows
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore src/FullLengthPlayer/FullLengthPlayer.csproj
+
+      - name: Publish win-x64
+        run: dotnet publish src/FullLengthPlayer/FullLengthPlayer.csproj -c Release -r win-x64 --self-contained true -o publish/FullLengthPlayer-win-x64
+
+      - name: Zip artifact
+        shell: pwsh
+        run: |
+          Compress-Archive -Path publish/FullLengthPlayer-win-x64/* -DestinationPath publish/FullLengthPlayer-win-x64.zip -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FullLengthPlayer-win-x64
+          path: publish/FullLengthPlayer-win-x64.zip
