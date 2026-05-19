@@ -796,8 +796,8 @@ public sealed class MainForm : Form
         if (combo.SelectedItem is not TrackItem item) return;
         try
         {
-            if (audio) player.AudioTrack = item.Id;
-            else player.Spu = item.Id;
+            if (audio) player.SetAudioTrack(item.Id);
+            else player.SetSpu(item.Id);
         }
         catch (Exception ex)
         {
