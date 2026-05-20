@@ -130,12 +130,13 @@ public sealed class MainForm : Form
         _split = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            SplitterDistance = 430,
             FixedPanel = FixedPanel.Panel1,
             BackColor = Color.FromArgb(11, 13, 16),
             Panel1MinSize = 330,
             Panel2MinSize = 520
         };
+        _split.SplitterDistance = GetSafeSplitterDistance(430);
+        _split.SizeChanged += (_, _) => _split.SplitterDistance = GetSafeSplitterDistance(_split.SplitterDistance);
         root.Controls.Add(_split, 0, 1);
 
         var sidebar = new FlowLayoutPanel
@@ -190,6 +191,17 @@ public sealed class MainForm : Form
             Text = "Ready. Load a reaction and a movie/show, then set offset and play."
         };
         root.Controls.Add(_statusLabel, 0, 2);
+    }
+
+    private int GetSafeSplitterDistance(int desiredDistance)
+    {
+        var max = _split.Width - _split.Panel2MinSize;
+        if (max < _split.Panel1MinSize)
+        {
+            return _split.Panel1MinSize;
+        }
+
+        return Math.Clamp(desiredDistance, _split.Panel1MinSize, max);
     }
 
     private void BuildOverlay()
