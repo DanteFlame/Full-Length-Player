@@ -135,8 +135,8 @@ public sealed class MainForm : Form
             Panel1MinSize = 330,
             Panel2MinSize = 520
         };
-        _split.SplitterDistance = GetSafeSplitterDistance(430);
-        _split.SizeChanged += (_, _) => _split.SplitterDistance = GetSafeSplitterDistance(_split.SplitterDistance);
+        _split.HandleCreated += (_, _) => ApplySafeSplitterDistance(430);
+        _split.SizeChanged += (_, _) => ApplySafeSplitterDistance(_split.SplitterDistance);
         root.Controls.Add(_split, 0, 1);
 
         var sidebar = new FlowLayoutPanel
@@ -193,15 +193,24 @@ public sealed class MainForm : Form
         root.Controls.Add(_statusLabel, 0, 2);
     }
 
-    private int GetSafeSplitterDistance(int desiredDistance)
+    private void ApplySafeSplitterDistance(int desiredDistance)
     {
-        var max = _split.Width - _split.Panel2MinSize;
-        if (max < _split.Panel1MinSize)
+        if (_split.IsDisposed)
         {
-            return _split.Panel1MinSize;
+            return;
         }
 
-        return Math.Clamp(desiredDistance, _split.Panel1MinSize, max);
+        var max = _split.ClientSize.Width - _split.Panel2MinSize;
+        if (max < _split.Panel1MinSize)
+        {
+            return;
+        }
+
+        var safeDistance = Math.Clamp(desiredDistance, _split.Panel1MinSize, max);
+        if (_split.SplitterDistance != safeDistance)
+        {
+            _split.SplitterDistance = safeDistance;
+        }
     }
 
     private void BuildOverlay()
