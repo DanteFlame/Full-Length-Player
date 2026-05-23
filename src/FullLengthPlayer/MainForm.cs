@@ -61,6 +61,9 @@ public sealed class MainForm : Form
 
     private readonly AppSettings _settings;
 
+    private const int SidebarMinWidth = 330;
+    private const int PlayerPanelMinWidth = 520;
+
     public MainForm()
     {
         Text = "Full-Length Player — Dual Sync";
@@ -131,12 +134,10 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             FixedPanel = FixedPanel.Panel1,
-            BackColor = Color.FromArgb(11, 13, 16),
-            Panel1MinSize = 330,
-            Panel2MinSize = 520
+            BackColor = Color.FromArgb(11, 13, 16)
         };
-        _split.SplitterDistance = GetSafeSplitterDistance(430);
-        _split.SizeChanged += (_, _) => _split.SplitterDistance = GetSafeSplitterDistance(_split.SplitterDistance);
+        _split.HandleCreated += (_, _) => ApplySafeSplitterDistance(430);
+        _split.SizeChanged += (_, _) => ApplySafeSplitterDistance(_split.SplitterDistance);
         root.Controls.Add(_split, 0, 1);
 
         var sidebar = new FlowLayoutPanel
@@ -193,15 +194,34 @@ public sealed class MainForm : Form
         root.Controls.Add(_statusLabel, 0, 2);
     }
 
-    private int GetSafeSplitterDistance(int desiredDistance)
+    private void ApplySafeSplitterDistance(int desiredDistance)
     {
-        var max = _split.Width - _split.Panel2MinSize;
-        if (max < _split.Panel1MinSize)
+        if (_split.IsDisposed)
         {
-            return _split.Panel1MinSize;
+            return;
         }
 
-        return Math.Clamp(desiredDistance, _split.Panel1MinSize, max);
+        var max = _split.ClientSize.Width - PlayerPanelMinWidth;
+        if (max < SidebarMinWidth)
+        {
+            return;
+        }
+
+        if (_split.Panel1MinSize != SidebarMinWidth)
+        {
+            _split.Panel1MinSize = SidebarMinWidth;
+        }
+
+        if (_split.Panel2MinSize != PlayerPanelMinWidth)
+        {
+            _split.Panel2MinSize = PlayerPanelMinWidth;
+        }
+
+        var safeDistance = Math.Clamp(desiredDistance, SidebarMinWidth, max);
+        if (_split.SplitterDistance != safeDistance)
+        {
+            _split.SplitterDistance = safeDistance;
+        }
     }
 
     private void BuildOverlay()
