@@ -61,6 +61,9 @@ public sealed class MainForm : Form
 
     private readonly AppSettings _settings;
 
+    private const int SidebarMinWidth = 330;
+    private const int PlayerPanelMinWidth = 520;
+
     public MainForm()
     {
         Text = "Full-Length Player — Dual Sync";
@@ -131,9 +134,7 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             FixedPanel = FixedPanel.Panel1,
-            BackColor = Color.FromArgb(11, 13, 16),
-            Panel1MinSize = 330,
-            Panel2MinSize = 520
+            BackColor = Color.FromArgb(11, 13, 16)
         };
         _split.HandleCreated += (_, _) => ApplySafeSplitterDistance(430);
         _split.SizeChanged += (_, _) => ApplySafeSplitterDistance(_split.SplitterDistance);
