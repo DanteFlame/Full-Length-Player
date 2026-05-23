@@ -201,23 +201,13 @@ public sealed class MainForm : Form
             return;
         }
 
-        var max = _split.ClientSize.Width - PlayerPanelMinWidth;
-        if (max < SidebarMinWidth)
+        var max = _split.ClientSize.Width - _split.Panel2MinSize;
+        if (max < _split.Panel1MinSize)
         {
             return;
         }
 
-        if (_split.Panel1MinSize != SidebarMinWidth)
-        {
-            _split.Panel1MinSize = SidebarMinWidth;
-        }
-
-        if (_split.Panel2MinSize != PlayerPanelMinWidth)
-        {
-            _split.Panel2MinSize = PlayerPanelMinWidth;
-        }
-
-        var safeDistance = Math.Clamp(desiredDistance, SidebarMinWidth, max);
+        var safeDistance = Math.Clamp(desiredDistance, _split.Panel1MinSize, max);
         if (_split.SplitterDistance != safeDistance)
         {
             _split.SplitterDistance = safeDistance;
