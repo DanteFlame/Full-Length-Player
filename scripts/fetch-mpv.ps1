@@ -13,6 +13,9 @@ $native = Join-Path $Destination 'mpv-distribution'
 if ($LASTEXITCODE -ne 0) { throw 'Cannot unpack libmpv.' }
 $dll = @(Get-ChildItem $native -Recurse -Filter libmpv-2.dll)
 if ($dll.Count -ne 1) { throw 'Expected exactly one libmpv-2.dll.' }
-Copy-Item $dll[0].FullName $Destination
+Copy-Item -LiteralPath $dll[0].FullName -Destination (Join-Path $Destination 'libmpv-2.dll')
+Get-Item (Join-Path $Destination 'libmpv-2.dll') | Select-Object Name, Length | Format-Table
+$dumpbin = Get-ChildItem 'C:/Program Files/Microsoft Visual Studio/2022' -Recurse -Filter dumpbin.exe -ErrorAction SilentlyContinue | Where-Object FullName -Match 'Hostx64.x64' | Select-Object -First 1
+if ($dumpbin) { & $dumpbin.FullName /DEPENDENTS (Join-Path $Destination 'libmpv-2.dll') }
 # Keep upstream headers, license and other distribution documentation together.
 Copy-Item (Join-Path $PSScriptRoot '../docs/THIRD_PARTY.md') $Destination
