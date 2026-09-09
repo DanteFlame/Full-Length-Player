@@ -128,3 +128,40 @@ with settling delays after seeks and transport changes. Corrections wait during
 seeking/buffering or mismatched pause states. Shared seeks clamp to the common
 range; reaching its end pauses both. No speed modulation in this milestone.
 Assess audible correction skips with real media before milestone 5.
+
+## Requested keyboard layout (planned; milestone 4 still awaiting user test)
+
+These requests describe future controls, not functionality in the milestone 4 EXE.
+Implement speed controls with the speed milestone after milestone 4 is confirmed.
+
+| Key | Requested behavior |
+| --- | --- |
+| A | Toggle both players between 1.0× and the previously active speed; repeated presses alternate (e.g. 1.5× ↔ 1.0×). |
+| S | Decrease shared speed; preferred increment 0.25×. |
+| D | Increase shared speed; preferred increment 0.25×. |
+| F | Preferred additional fullscreen binding, alongside F11; user left F open to another use if needed. |
+| G | Toggle both players between a configurable favorite speed and the speed active before entering it; suggested favorite 2.0× (e.g. 1.5× ↔ 2.0× or 1.0× ↔ 2.0×). |
+| J | Shared seek backward 5 seconds. |
+| K | Shared play/pause, same behavior as Space. |
+| L | Shared seek forward 5 seconds. |
+| Comma / period | Decrease/increase the sync offset by 0.1 seconds; retain offset nudging rather than frame stepping. |
+| Shift + playback shortcut | Apply the applicable playback action only to the player under the mouse. |
+
+Unmodified playback shortcuts remain master controls regardless of mouse location.
+Hover is a preferred target selector for Shift-modified independent playback controls,
+not a reason to turn ordinary shortcuts into per-player actions. Extend the same
+targeting convention to volume shortcuts once their actual keys are chosen; the user
+has not specified volume keys yet. Retain F1/F2 explicit selection as a useful fallback;
+when neither pane is hovered, falling back to that selection is a proposed behavior,
+not a finalized user requirement. The precise modifier/targeting UX can be settled later.
+
+A and G must restore the actual previous speed rather than a hard-coded fallback.
+Their toggle memories must not be overwritten by the temporary destination speed.
+Define and test how intervening S/D changes, switching between A and G, already being
+at the target speed, and independent speed adjustments affect toggle memory. Speed
+bounds and interaction with locked sync also remain implementation decisions.
+Do not invent final rules for these edge cases or silently change the stored offset.
+
+Keep normal text/numeric editing and menu navigation intact when a control has focus.
+Fullscreen applies to the full composition/window; per-player fullscreen was not
+requested. These preferences do not authorize advancing beyond milestone 4's test gate.
