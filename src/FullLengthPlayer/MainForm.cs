@@ -10,6 +10,13 @@ internal sealed class MainForm : Form
     internal SpeedControl SharedSpeed { get; }
     internal SpeedPreferences Preferences { get; } = new();
     private readonly ToolStripDropDownButton speedMenu = new("Speed: 1×");
+    internal CompositionView Composition { get; }
+    private readonly FlowLayoutPanel compositionBar = new() { Dock = DockStyle.Top, Height = 66, AutoScroll = true, BackColor = SystemColors.Control };
+    private readonly TableLayoutPanel playerControls = new() { Dock = DockStyle.Bottom, Height = 180, ColumnCount = 2, RowCount = 1 };
+    private readonly Label info = new() { Dock = DockStyle.Bottom, Height = 25, ForeColor = Color.White, Text = "A/S/D/G: both speeds • Shift+J/K/L: hovered player • F/F11: fullscreen • Esc: exit fullscreen", AutoEllipsis = true };
+    private Rectangle windowBounds;
+    private FormWindowState previousState;
+    internal bool Fullscreen { get; private set; }
     private long nextUiUpdate;
     private readonly ToolStrip masterBar = new() { Dock = DockStyle.Top, GripStyle = ToolStripGripStyle.Hidden };
     private readonly TrackBar masterTimeline = new() { Dock = DockStyle.Top, Height = 32, Maximum = 10000, TickStyle = TickStyle.None };
@@ -31,10 +38,8 @@ internal sealed class MainForm : Form
         Master = new MasterTransport(() => Reaction.Player, () => Source.Player);
         SharedSpeed = new SpeedControl(() => Reaction.Player?.Number("speed") ?? 1, value =>
         {
-            Master.SetSpeed(value); Reaction.Speeds.Reset(); Source.Speeds.Reset();
+            Master.SetSpeed(value);
         });
-        Reaction.ManualSpeed += SharedSpeed.Reset;
-        Source.ManualSpeed += SharedSpeed.Reset;
         Reaction.MediaReplaced += SharedSpeed.Reset;
         Source.MediaReplaced += SharedSpeed.Reset;
         Reaction.ManualTransport += () => Master.Unlock("Unlocked by independent control — relock after aligning");
@@ -81,14 +86,15 @@ internal sealed class MainForm : Form
         masterTimeline.MouseDown += (_, _) => masterDragging = true;
         masterTimeline.MouseUp += (_, _) => { masterDragging = false; SeekMasterTimeline(); };
         masterTimeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown) SeekMasterTimeline(); };
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty, Padding = Padding.Empty };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.Controls.Add(Reaction, 0, 0);
-        layout.Controls.Add(Source, 1, 0);
-        var info = new Label { Dock = DockStyle.Bottom, Height = 25, ForeColor = Color.White, Text = "A/S/D/G: speed • J/K/L or arrows/Space: BOTH • Shift: player under mouse (F1/F2 fallback) • H: reserved", AutoEllipsis = true };
-        Controls.Add(layout);
+        Composition = new CompositionView(Reaction, Source);
+        playerControls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        playerControls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        playerControls.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        playerControls.Controls.Add(Reaction, 0, 0); playerControls.Controls.Add(Source, 1, 0);
+        BuildCompositionControls();
+        Controls.Add(Composition);
+        Controls.Add(playerControls);
+        Controls.Add(compositionBar);
         Controls.Add(info);
         Controls.Add(masterTimeline);
         Controls.Add(masterStatus);
@@ -103,7 +109,7 @@ internal sealed class MainForm : Form
             try { Master.Tick(); } catch (Exception e) { Master.Unlock("Sync stopped: " + e.Message); }
             if (Environment.TickCount64 < nextUiUpdate) return;
             nextUiUpdate = Environment.TickCount64 + 200;
-            Reaction.UpdatePlayback(); Source.UpdatePlayback(); UpdateMaster();
+            Reaction.UpdatePlayback(); Source.UpdatePlayback(); Composition.Arrange(); UpdateMaster();
         };
         Shown += async (_, _) =>
         {
@@ -133,6 +139,57 @@ internal sealed class MainForm : Form
                 }
             }
         };
+    }
+    private void BuildCompositionControls()
+    {
+        void Choice(string label, string[] choices, Action<int> change)
+        {
+            compositionBar.Controls.Add(new Label { Text = label, AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
+            var box = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90 };
+            box.Items.AddRange(choices); box.SelectedIndex = 0;
+            box.SelectedIndexChanged += (_, _) => { change(box.SelectedIndex); Composition.Arrange(); };
+            compositionBar.Controls.Add(box);
+        }
+        Choice("Canvas", new[] { "16:9", "4:3" }, i => Composition.CanvasAspect = i == 0 ? 16.0 / 9 : 4.0 / 3);
+        Choice("Source edge", new[] { "Bottom", "Top" }, i => Composition.TopAnchor = i == 1);
+        NumericUpDown Number(string label, decimal value, decimal min, decimal max, Action<double> change)
+        {
+            compositionBar.Controls.Add(new Label { Text = label, AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
+            var input = new NumericUpDown { Width = 55, Minimum = min, Maximum = max, Value = value };
+            input.ValueChanged += (_, _) => { change((double)input.Value / 100); Composition.Arrange(); };
+            compositionBar.Controls.Add(input); return input;
+        }
+        var size = Number("Source %", 70, 15, 100, v => Composition.SourceFraction = v);
+        Composition.ResizedSource += () => size.Value = Math.Clamp((decimal)Math.Round(Composition.SourceFraction * 100), 15, 100);
+        Number("Crop top %", 20, 0, 45, v => Composition.CropTop = v);
+        Number("Crop bottom %", 0, 0, 45, v => Composition.CropBottom = v);
+        Number("Reaction zoom %", 100, 50, 200, v => Composition.Zoom = v);
+        Number("Pan X %", 0, -100, 100, v => Composition.PanX = v);
+        Number("Pan Y %", 0, -100, 100, v => Composition.PanY = v);
+        var full = new Button { Text = "Fullscreen", AutoSize = true };
+        full.Click += (_, _) => ToggleFullscreen(); compositionBar.Controls.Add(full);
+    }
+    internal void ToggleFullscreen()
+    {
+        SuspendLayout();
+        if (!Fullscreen)
+        {
+            windowBounds = Bounds; previousState = WindowState;
+            WindowState = FormWindowState.Normal;
+            FormBorderStyle = FormBorderStyle.None;
+            Bounds = Screen.FromControl(this).Bounds;
+            Fullscreen = true;
+        }
+        else
+        {
+            Fullscreen = false;
+            FormBorderStyle = FormBorderStyle.Sizable;
+            Bounds = windowBounds; WindowState = previousState;
+        }
+        foreach (Control control in new Control[] { masterBar, syncBar, masterStatus, masterTimeline, compositionBar, playerControls, info }) control.Visible = !Fullscreen;
+        Composition.ShowHandles = !Fullscreen;
+        ActiveControl = null;
+        ResumeLayout(true); Composition.Arrange();
     }
     private void RunMaster(Action action)
     {
@@ -175,10 +232,12 @@ internal sealed class MainForm : Form
         dialog.Controls.Add(field); dialog.Controls.Add(save); dialog.AcceptButton = save;
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         Preferences.Save((double)field.Value);
-        SharedSpeed.Reset(); Reaction.Speeds.Reset(); Source.Speeds.Reset();
+        SharedSpeed.Reset();
     }
     internal PlayerPane HoverTarget(Point cursor)
     {
+        var hit = Composition.HitPlayer(cursor);
+        if (hit != null) return hit;
         if (Reaction.RectangleToScreen(Reaction.ClientRectangle).Contains(cursor)) return Reaction;
         if (Source.RectangleToScreen(Source.ClientRectangle).Contains(cursor)) return Source;
         return active;
@@ -192,9 +251,12 @@ internal sealed class MainForm : Form
         if (keyData == (Keys.Control | Keys.O)) { active.Open(); return true; }
         if ((keyData & Keys.Modifiers) != Keys.None && !shift) return false;
         var target = HoverTarget(cursor);
-        var speeds = shift ? target.Speeds : SharedSpeed;
+        var speeds = SharedSpeed;
         switch (key)
         {
+            case Keys.F when !shift:
+            case Keys.F11 when !shift: ToggleFullscreen(); break;
+            case Keys.Escape when Fullscreen: ToggleFullscreen(); break;
             case Keys.A: speeds.Toggle("normal", 1); break;
             case Keys.S: speeds.Step(-0.25); break;
             case Keys.D: speeds.Step(0.25); break;
@@ -213,7 +275,7 @@ internal sealed class MainForm : Form
     }
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
-        if (offsetInput.ContainsFocus || Reaction.TrackMenuOpen || Source.TrackMenuOpen || speedMenu.DropDown.Visible)
+        if (compositionBar.ContainsFocus || offsetInput.ContainsFocus || Reaction.TrackMenuOpen || Source.TrackMenuOpen || speedMenu.DropDown.Visible)
             return base.ProcessCmdKey(ref msg, keyData);
         try { if (HandleShortcut(keyData, Cursor.Position)) { UpdateMaster(); return true; } }
         catch (Exception e) { MessageBox.Show(this, e.Message, "Playback error"); return true; }

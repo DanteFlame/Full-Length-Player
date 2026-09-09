@@ -3,11 +3,24 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 5 — shared speed and coordinated seeking
+## Current build: milestone 6 — composition and fullscreen
 
-Gonz confirmed milestone 4's fixed offset using aligned anime intro songs. He also
-found that skips could leave the players resuming at different times. This build
-adds speed controls and addresses that remaining seek/resume behavior.
+Milestone 5 was confirmed on Gonz's PC: speed controls work and seek synchronization
+is substantially improved. This build adds the intended overlaid viewing layout.
+
+Reaction A is the background. **Crop top/bottom %** trims unwanted room space;
+**Reaction zoom** and **Pan X/Y** move the image inside its clipped area. The cropped
+reaction sits at the top of a black **16:9 or 4:3 canvas**.
+
+Source B sits in front, horizontally centered. Choose **Bottom** or **Top**, then
+resize with **Source %** or drag a blue corner handle. Its display aspect ratio and
+selected edge are retained, with size limited to the canvas. Track and volume
+controls for both players remain below the composition.
+
+**F or F11** enters a clean fullscreen composition; **Esc**, F or F11 returns to the
+previous window. Playback shortcuts remain available in fullscreen. Layout settings
+are session-only for now. Cropping can hide parts of reaction subtitles; source
+subtitles stay inside the foreground video.
 
 ### Playback speed and keys
 
@@ -23,26 +36,26 @@ changes preserve the stored offset. Each pane shows its own current speed.
 | J / K / L | Back 5 s / play-pause / forward 5 s, both players |
 | Left / Space / Right | Existing aliases for the same shared actions |
 | Comma / period | Offset −0.1 s / +0.1 s |
-| Shift + A/S/D/G/J/K/L or arrows/Space | Apply to the player under the pointer |
+| Shift + J/K/L or arrows/Space | Apply to the player under the pointer |
+| Shift + A/S/D/G | Still change the shared speed for both players |
+| F / F11; Esc | Toggle fullscreen; exit fullscreen |
 | F1 / F2 | Choose the fallback player when the pointer is outside both panes |
 | Ctrl+O | Open media in the explicitly selected player |
 
-Ordinary keys always target both players. Modified independent playback/speed
-changes unlock sync. Set a shared rate again before re-locking if rates differ.
+Ordinary keys always target both players. Independent pause/seek
+changes unlock sync. Speed always affects both, even with Shift held.
 Track menus and the offset numeric field retain normal keyboard editing/navigation.
 
 **Favorite settings** changes the favorite (default 2×), saved to
 `%LOCALAPPDATA%/FullLengthPlayer/preferences.json`. Session media/offset/layout saving
 is still future work. **H** is reserved for “What Did They Say?” and is not active.
-F/F11 fullscreen remains planned with the composition work.
+
 
 A/G remember the actual speed on entering that toggle. Repeating the same key
 restores it. S/D or choosing a speed ends the temporary toggle. Switching from A
 to G (or vice versa) starts a new toggle from the speed currently playing; already
-being at the destination with no active toggle is a no-op. Toggle memory is separate
-for master/A/B. Shared changes clear independent toggle history; independent speed
-changes clear master toggle history. Loading media or changing the favorite resets
-the relevant history so stale values are not unexpectedly restored.
+being at the destination with no active toggle is a no-op. Speed toggle memory is shared. Loading media or changing the favorite resets it.
+
 
 ### Seek/resume behavior
 
@@ -59,8 +72,7 @@ and allow alignment recovery; they no longer disable correction indefinitely.
 These are separate native players, so sample-perfect audio is not guaranteed; real
 media testing still matters. The 80 ms correction threshold is unchanged.
 
-Side-by-side remains the temporary layout. “What Did They Say?”, fullscreen/cropping,
-Patreon/HLS and YouTube handling are later stages.
+“What Did They Say?”, Patreon/HLS and YouTube handling remain later stages.
 
 ## Technology
 
@@ -84,12 +96,12 @@ checks in `PlaybackVerification.cs`. Personal mpv configuration/scripts are disa
 2. Extract the artifact and the inner ZIP into a fresh folder. Keep all files together.
 3. Launch **FullLengthPlayer.exe**, choose **Open video**, and select a local MKV/MP4.
 4. Load Source B, align while paused, then **Lock current alignment**.
-5. Use S/D to reach 1.5×; test A toggling 1.5× ↔ 1× and G toggling 1.5× ↔ 2×.
-6. Try J/K/L and repeated skips at 1.5× or 2×. Both should wait for seeking and then
-   resume together. Compare with the intro-song test that exposed the earlier drift.
-7. Hover over each pane and use Shift+J/K/L or Shift+S/D. Only that pane should change,
-   and sync should unlock. Restore a shared speed and re-lock afterward.
-8. Change Favorite settings, restart the app, reload media and verify G uses it.
+5. Crop the reaction's empty top space, then adjust zoom/pan to frame the reactors.
+6. Drag a blue source corner; confirm it stays centered and attached to the chosen edge.
+7. Switch Top/Bottom and 16:9/4:3, resize the window, and try F/F11 and Esc.
+8. Check that both videos, audio and subtitles keep playing through layout changes.
+9. Check Shift+S/D still changes both speeds without unlocking; Shift+J/K/L targets
+   the hovered video and unlocks for manual alignment.
 
 Please report stutter, black video, missing sound/subtitles, or one player's controls
 unexpectedly affecting the other. Keep all downloaded files together. The app still
@@ -133,7 +145,10 @@ recovery and a stable stored offset across repeated seeks, both nudge directions
 negative-offset bounds, invalid-offset rejection and unlock on manual edits/reload.
 Milestone 5 tests native speed values, A/G restoration/interleaving, speed limits,
 J/K/L dispatch, hover/fallback targeting, favorite persistence, coordinated resume,
-rapid queued skips and pausing during an in-progress seek. The media fixture uses a Unicode filename.
+rapid queued skips and pausing during an in-progress seek. Milestone 6 checks canvas
+aspect, source centering/anchors/bounds, reaction crop/pan, foreground hover,
+fullscreen restoration, native handle retention and Shift speed sharing. It also
+captures the actual composed window for inspection. The media fixture uses a Unicode filename.
 Application artifacts upload only after both tests pass; JSON/frame/error evidence
 is uploaded separately.
 

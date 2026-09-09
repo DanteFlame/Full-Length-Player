@@ -20,19 +20,12 @@ internal sealed class PlayerPane : UserControl
     internal bool TrackMenuOpen => audio.DropDown.Visible || subtitles.DropDown.Visible;
     internal event Action<PlayerPane>? Activated;
     internal event Action? ManualTransport;
-    internal event Action? ManualSpeed;
     internal event Action? MediaReplaced;
-    internal SpeedControl Speeds { get; }
+    internal Panel Surface => video;
 
     public PlayerPane(string role)
     {
         Role = role;
-        Speeds = new SpeedControl(() => Player?.Number("speed") ?? 1, value =>
-        {
-            if (Player == null) return;
-            ManualTransport?.Invoke(); ManualSpeed?.Invoke();
-            Player.Set("speed", value.ToString(CultureInfo.InvariantCulture));
-        });
         Dock = DockStyle.Fill;
         BackColor = Color.FromArgb(30, 30, 30);
         Padding = new Padding(3);
@@ -98,7 +91,7 @@ internal sealed class PlayerPane : UserControl
     {
         if (Player == null) throw new InvalidOperationException("MPV is unavailable. Restart with all downloaded files together.");
         if (!File.Exists(path)) throw new FileNotFoundException("Local video not found.", path);
-        ManualTransport?.Invoke(); MediaReplaced?.Invoke(); Speeds.Reset();
+        ManualTransport?.Invoke(); MediaReplaced?.Invoke();
         playbackError = null;
         fileName = Path.GetFileName(path);
         Player.Command("loadfile", Path.GetFullPath(path), "replace");

@@ -210,11 +210,53 @@ internal static class PlaybackVerification
         await Until(() => a.Get("pause") == "yes" && b.Get("pause") == "yes" && Math.Abs(b.Number("time-pos") - a.Number("time-pos") - 4) < 0.12, "Native pause mismatch did not recover.");
         // Hover wins for modified shortcuts; unmodified actions remain shared.
         form.HandleShortcut(Keys.Shift | Keys.D, pointerB);
-        Assert(!form.Master.Locked && a.Number("speed") == 1.5 && b.Number("speed") == 1.75, "Hover speed control affected the wrong player.");
+        await Speed(1.75); // Shift must never make speed independent
         form.HandleShortcut(Keys.F1, pointerB);
         Assert(form.HoverTarget(pointerB) == form.Source && form.HoverTarget(new Point(-10000, -10000)) == form.Reaction, "Hover/fallback targeting failed.");
         form.SharedSpeed.Set(1.5);
         await Until(() => a.Number("speed") == 1.5 && b.Number("speed") == 1.5, "Shared speed did not restore equal rates.");
+        // Composition exercises real native surfaces and full-window transitions.
+        var ah = form.Reaction.Surface.Handle; var bh = form.Source.Surface.Handle;
+        var composition = form.Composition;
+        form.ClientSize = new Size(1100, 800);
+        foreach (double aspect in new[] { 16.0 / 9, 4.0 / 3 })
+        foreach (bool topAnchor in new[] { false, true })
+        foreach (double fraction in new[] { 0.25, 0.7, 1.0 })
+        {
+            composition.CanvasAspect = aspect; composition.TopAnchor = topAnchor; composition.SourceFraction = fraction;
+            composition.CropTop = 0.25; composition.CropBottom = 0.1;
+            composition.Zoom = 1.2; composition.PanX = 0.05; composition.PanY = -0.05;
+            composition.Arrange();
+            var c = composition.CanvasBounds; var r = composition.SourceBounds;
+            Assert(Math.Abs(c.Width / (double)c.Height - aspect) < 0.02, "Canvas aspect incorrect.");
+            Assert(Math.Abs(r.Left * 2 + r.Width - c.Width) <= 1, "Source must stay centered.");
+            Assert(topAnchor ? r.Top == 0 : r.Bottom == c.Height, "Source lost its anchor.");
+            Assert(r.Width <= c.Width && r.Height <= c.Height, "Source escaped canvas.");
+            Assert(composition.ReactionBounds.Y < 0 && composition.MaskBounds.Height < composition.ReactionBounds.Height, "Reaction crop/pan not applied.");
+            Assert(form.HoverTarget(form.Source.Surface.PointToScreen(new Point(r.Width / 2, r.Height / 2))) == form.Source, "Foreground hover must win.");
+        }
+        composition.CanvasAspect = 16.0 / 9; composition.TopAnchor = false;
+        composition.SourceFraction = 0.7; composition.Zoom = 1; composition.PanX = composition.PanY = 0;
+        composition.Arrange();
+        var bounds = form.Bounds;
+        Key(Keys.F);
+        Assert(form.Fullscreen && form.FormBorderStyle == FormBorderStyle.None, "F fullscreen failed.");
+        Assert(composition.Width == form.ClientSize.Width && composition.Height == form.ClientSize.Height, "Fullscreen did not hide controls.");
+        Key(Keys.Escape);
+        Assert(!form.Fullscreen && form.Bounds == bounds, "Fullscreen did not restore window bounds.");
+        Key(Keys.F11); Key(Keys.F11);
+        Assert(!form.Fullscreen && form.Reaction.Surface.Handle == ah && form.Source.Surface.Handle == bh, "Layout recreated native surfaces.");
+        Assert(form.Master.Locked && Math.Abs(form.Master.Offset - 4) < 0.001, "Layout changed sync lock.");
+        // Capture the actual composed desktop, in addition to decoded-frame evidence.
+        await Task.Delay(500);
+        using (var screen = new Bitmap(form.ClientSize.Width, form.ClientSize.Height))
+        {
+            using var graphics = Graphics.FromImage(screen);
+            graphics.CopyFromScreen(form.PointToScreen(Point.Empty), Point.Empty, screen.Size);
+            screen.Save(report + ".composition.png");
+        }
+        form.HandleShortcut(Keys.Shift | Keys.J, pointerB);
+        Assert(!form.Master.Locked, "Independent seek must still unlock sync.");
         var preferencesFile = report + ".preferences.tmp";
         var preferences = new SpeedPreferences(preferencesFile);
         Assert(preferences.Favorite == 2, "Default favorite incorrect.");
@@ -225,7 +267,7 @@ internal static class PlaybackVerification
         File.Delete(preferencesFile);
         Assert(!form.HandleShortcut(Keys.H, pointerA), "H must remain reserved for the later replay feature.");
         Assert(a.Number("volume") == 35 && b.Number("volume") == 70, "Speed shortcuts changed volumes.");
-        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 5, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
+        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 6, composition = true, fullscreen = true, sharedShiftSpeed = true, nativeSurfaceRetention = true, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
         form.Close();
     }
 }

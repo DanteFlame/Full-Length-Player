@@ -81,8 +81,8 @@ Do not proceed past a failed or unconfirmed foundation.
 | 2 (confirmed) | Two independent MPV instances | Both videos visible and both audio tracks audible |
 | 3 (confirmed) | Shared transport | Master play/pause and seeking affect both |
 | 4 (confirmed, seek/resume refinement in 5) | Offset and drift correction | Offset maintained through seeking; ±0.1s nudging |
-| 5 (current) | Shared speed, independent audio/subtitles | Speed changes preserve alignment; independent track/volume controls |
-| 6 | Composition | Reaction crop/pan and centered top/bottom source resizing |
+| 5 (confirmed) | Shared speed, independent audio/subtitles | Speed changes preserve alignment; independent track/volume controls |
+| 6 (current) | Composition | Reaction crop/pan and centered top/bottom source resizing |
 | 7 | Patreon/HLS and headers | Authorized real stream playback with correct Referer |
 | 8 | YouTube resolution | Unlisted reaction URL playback |
 | 9 | Audio-assisted automatic alignment | Confidence and accuracy against real reaction recordings |
@@ -191,3 +191,18 @@ exact replay/mute/volume/speed restoration behavior above.
 
 M4 is accepted with the noted refinement. M5 requires Gonz's Windows playback test
 before advancing to composition. No claim of sample-perfect synchronization.
+
+
+## Milestone 6 decisions (supersede earlier independent-speed notes)
+
+Gonz confirmed milestone 5: speed shortcuts work and coordinated seeking greatly
+reduces drift. Speed is ALWAYS shared, including Shift+A/S/D/G. Remove individual
+speed controls/history. Shift only makes pause/seek independent; hover selects the
+visible foreground B before the reaction background, with F1/F2 fallback.
+
+Implement reaction top/bottom percentage clipping, zoom and X/Y pan; centered source
+with top/bottom anchoring, aspect-preserving corner resizing and numeric size.
+Offer 16:9 and 4:3 canvases. F/F11 fullscreen hides controls, Esc restores the prior
+window. Retain native surface handles and sync state throughout layout changes.
+Layout persists within the session only. H remains reserved. User playback and
+composition confirmation gates milestone 7.
