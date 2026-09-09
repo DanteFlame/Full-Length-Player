@@ -18,3 +18,10 @@ pinned build recipes for the GPL/LGPL and other component terms and source locat
 
 CI fixture generation uses FFmpeg build b1f564bda from the same release, verified
 by SHA-256. FFmpeg is a test tool and is not included in the application artifact.
+
+Vulkan loader: official LunarG runtime components 1.4.357.0, downloaded from
+https://sdk.lunarg.com/sdk/download/1.4.357.0/windows/vulkan-runtime-components.zip
+The x64 loader's Authenticode signature is verified before bundling. Its original
+distribution/notices are retained in vulkan-distribution. Source and licensing:
+https://github.com/KhronosGroup/Vulkan-Loader/tree/v1.4.357
+The loader is an imported dependency of libmpv, even when using D3D11 output.

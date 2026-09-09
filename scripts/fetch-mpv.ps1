@@ -15,7 +15,17 @@ $dll = @(Get-ChildItem $native -Recurse -Filter libmpv-2.dll)
 if ($dll.Count -ne 1) { throw 'Expected exactly one libmpv-2.dll.' }
 Copy-Item -LiteralPath $dll[0].FullName -Destination (Join-Path $Destination 'libmpv-2.dll')
 Get-Item (Join-Path $Destination 'libmpv-2.dll') | Select-Object Name, Length | Format-Table
-$dumpbin = Get-ChildItem 'C:/Program Files/Microsoft Visual Studio/2022' -Recurse -Filter dumpbin.exe -ErrorAction SilentlyContinue | Where-Object FullName -Match 'Hostx64.x64' | Select-Object -First 1
-if ($dumpbin) { & $dumpbin.FullName /DEPENDENTS (Join-Path $Destination 'libmpv-2.dll') }
+# This libmpv build imports the Vulkan loader even when using D3D11.
+# Ship the official redistributable beside the app; do not install machine-wide.
+$vulkanZip = Join-Path $env:TEMP 'flp-vulkan-1.4.357.0.zip'
+Invoke-WebRequest 'https://sdk.lunarg.com/sdk/download/1.4.357.0/windows/vulkan-runtime-components.zip' -OutFile $vulkanZip
+$vulkanDir = Join-Path $Destination 'vulkan-distribution'
+Expand-Archive $vulkanZip -DestinationPath $vulkanDir -Force
+$loaders = @(Get-ChildItem $vulkanDir -Recurse -Filter vulkan-1.dll | Where-Object FullName -Match '[\\/]x64[\\/]')
+if ($loaders.Count -ne 1) { Get-ChildItem $vulkanDir -Recurse | Select-Object FullName; throw 'Expected one x64 Vulkan loader.' }
+$signature = Get-AuthenticodeSignature $loaders[0].FullName
+if ($signature.Status -ne 'Valid') { throw "Vulkan loader signature invalid: $($signature.Status)" }
+Copy-Item -LiteralPath $loaders[0].FullName -Destination (Join-Path $Destination 'vulkan-1.dll')
+Get-FileHash $vulkanZip | Format-List
 # Keep upstream headers, license and other distribution documentation together.
 Copy-Item (Join-Path $PSScriptRoot '../docs/THIRD_PARTY.md') $Destination

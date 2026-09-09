@@ -25,7 +25,8 @@ WinForms provides the window and controls. The native player renders into a chil
 window using D3D11. Hardware decoding uses `auto-safe`, with software fallback.
 There is no browser playback layer or LibVLC dependency.
 
-The download includes the .NET runtime and `libmpv-2.dll`. Build tooling pins the
+The download includes the .NET runtime, `libmpv-2.dll`, and the official Vulkan loader
+required by this MPV build (even though playback uses D3D11). Build tooling pins the
 standard x86_64 shinchiro MPV build dated 20260901 and checks its SHA-256 before
 unpacking; it does not require an x86_64-v3 CPU. See [third-party details](docs/THIRD_PARTY.md).
 The native wrapper is isolated in `MpvPlayer.cs`, UI in `MainForm.cs`, and CI playback
