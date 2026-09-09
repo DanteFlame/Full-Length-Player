@@ -62,7 +62,14 @@ internal sealed class MainForm : Form
             catch (Exception error)
             {
                 if (verify) { File.WriteAllText(args[2] + ".error.txt", error.ToString()); Environment.ExitCode = 1; Close(); }
-                else { status.Text = "MPV initialization failed"; MessageBox.Show(this, error.Message, "Playback error"); }
+                else
+                {
+                    var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FullLengthPlayer", "logs");
+                    Directory.CreateDirectory(directory);
+                    File.WriteAllText(Path.Combine(directory, "mpv-error.log"), error.ToString());
+                    status.Text = "MPV initialization failed";
+                    MessageBox.Show(this, error.ToString(), "Playback error");
+                }
             }
         };
     }

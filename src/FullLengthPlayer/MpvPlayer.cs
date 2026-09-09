@@ -27,7 +27,11 @@ internal sealed class MpvPlayer : IDisposable
         }
         catch { Dispose(); throw; }
     }
-    private void Option(string name, string value) => Check(Native.mpv_set_option_string(handle, name, value));
+    private void Option(string name, string value)
+    {
+        int result = Native.mpv_set_option_string(handle, name, value);
+        if (result < 0) throw new InvalidOperationException($"MPV option {name}={value}: {Error(result)}");
+    }
     public void Set(string name, string value) => Check(Native.mpv_set_property_string(handle, name, value));
     public string? Get(string name)
     {
