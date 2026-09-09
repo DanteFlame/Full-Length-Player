@@ -53,6 +53,11 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         if (p.A.Get("eof-reached") == "yes" || p.B.Get("eof-reached") == "yes" || target < 0 || target > p.BDuration)
         {
             p.A.Set("pause", "yes"); p.B.Set("pause", "yes");
+            // Restore the pair to its shared boundary if A ran past it between checks.
+            // Do not re-seek an already settled final frame every timer interval.
+            double boundaryA = Math.Clamp(p.ATime, Math.Max(0, -Offset), Math.Min(p.ADuration, p.BDuration - Offset));
+            if (Math.Abs(p.ATime - boundaryA) > Tolerance || Math.Abs(p.BTime - boundaryA - Offset) > Tolerance)
+                SeekLocked(p, boundaryA);
             SyncStatus = "Shared range ended — seek back to continue"; Settle(); return;
         }
         if (p.A.Get("pause") != p.B.Get("pause")) { SyncStatus = "Waiting for matching play/pause states"; return; }

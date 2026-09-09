@@ -153,6 +153,8 @@ internal static class PlaybackVerification
         await Until(() => form.Master.CorrectionCount > corrections && Math.Abs(b.Number("time-pos") - a.Number("time-pos") - 4) < 0.1, "Periodic correction failed during playback.");
         Assert(form.Master.Offset == 4 && a.Number("volume") == 35 && b.Number("volume") == 70, "Correction changed offset or volume.");
         form.Master.TogglePause();
+        a.Command("seek", "38", "absolute+exact"); b.Command("seek", "39", "absolute+exact");
+        await Until(() => Math.Abs(a.Number("time-pos") - 36) < 0.1 && b.Number("time-pos") > 39.7 && a.Get("pause") == "yes" && b.Get("pause") == "yes", "Correction must restore an overshot shared endpoint.");
         form.Reaction.LoadVideo(media);
         Assert(!form.Master.Locked, "Replacing media must invalidate the lock.");
         File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 4, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
