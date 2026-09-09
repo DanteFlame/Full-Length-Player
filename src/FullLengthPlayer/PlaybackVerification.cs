@@ -104,7 +104,58 @@ internal static class PlaybackVerification
         await Task.Delay(500);
         Assert(Math.Abs(a.Number("time-pos") - holdA) < 0.15 && Math.Abs(b.Number("time-pos") - holdB) < 0.15, "Master pause failed.");
         Assert(a.Number("volume") == 35 && b.Number("volume") == 70, "Shared transport changed volume choices.");
-        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 3, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
+        // Fixed offset must survive injected drift and repeated master seeks.
+        a.Command("seek", "8", "absolute+exact"); b.Command("seek", "12", "absolute+exact");
+        await Until(() => Math.Abs(a.Number("time-pos") - 8) < 0.1 && Math.Abs(b.Number("time-pos") - 12) < 0.1 && a.Get("seeking") == "no" && b.Get("seeking") == "no", "Cannot prepare sync lock.");
+        form.Master.CaptureAlignment();
+        var fixedOffset = form.Master.Offset;
+        Assert(form.Master.Locked && Math.Abs(fixedOffset - 4) < 0.1, "Capture did not store B−A.");
+        b.Command("seek", "13", "absolute+exact"); // simulate decoder/seek drift, not a manual UI edit
+        await Until(() => Math.Abs(b.Number("time-pos") - 13) < 0.1, "Cannot inject drift.");
+        await Until(() => Math.Abs(b.Number("time-pos") - a.Number("time-pos") - fixedOffset) < 0.08 && form.Master.CorrectionCount > 0, "Periodic correction failed while paused.");
+        var corrections = form.Master.CorrectionCount;
+        await Task.Delay(2400);
+        Assert(form.Master.CorrectionCount == corrections, "Correction should ignore an aligned pair.");
+        foreach (var target in new[] { 20.0, 5.0, 24.0, 9.0 })
+        {
+            form.Master.SeekReaction(target);
+            await Until(() => Math.Abs(a.Number("time-pos") - target) < 0.1 && Math.Abs(b.Number("time-pos") - target - fixedOffset) < 0.1, "Locked seeking accumulated drift.");
+            Assert(form.Master.Offset == fixedOffset, "Master seek changed the stored offset.");
+        }
+        form.Master.Nudge(0.1);
+        await Until(() => Math.Abs(b.Number("time-pos") - a.Number("time-pos") - form.Master.Offset) < 0.08, "Positive nudge failed.");
+        Assert(Math.Abs(form.Master.Offset - fixedOffset - 0.1) < 0.001, "Nudge value wrong.");
+        form.Master.Nudge(-0.1);
+        await Until(() => Math.Abs(b.Number("time-pos") - a.Number("time-pos") - fixedOffset) < 0.08, "Negative nudge failed.");
+        form.Master.SetOffset(-3);
+        form.Master.SeekReaction(0);
+        await Until(() => Math.Abs(a.Number("time-pos") - 3) < 0.1 && b.Number("time-pos") < 0.1, "Negative-offset start boundary failed.");
+        form.Master.SeekReaction(100);
+        await Until(() => a.Number("time-pos") > 39.7 && Math.Abs(b.Number("time-pos") - 37) < 0.1, "Negative-offset end boundary failed.");
+        form.Master.SeekReaction(10);
+        await Until(() => Math.Abs(a.Number("time-pos") - 10) < 0.1 && Math.Abs(b.Number("time-pos") - 7) < 0.1, "Negative-offset seek back failed.");
+        bool invalidRejected = false;
+        try { form.Master.SetOffset(1000); } catch (InvalidOperationException) { invalidRejected = true; }
+        Assert(invalidRejected && form.Master.Offset == -3, "Invalid offset corrupted alignment.");
+        // A real independently controlled seek must release the lock, not snap back.
+        form.Source.Seek(5);
+        Assert(!form.Master.Locked, "Independent seeking must unlock sync.");
+        await Until(() => Math.Abs(b.Number("time-pos") - 12) < 0.1 && b.Get("seeking") == "no", "Independent seek failed.");
+        await Task.Delay(2400);
+        Assert(Math.Abs(b.Number("time-pos") - 12) < 0.1, "Unlocked correction fought manual adjustment.");
+        form.Master.SetOffset(4);
+        await Until(() => Math.Abs(b.Number("time-pos") - 14) < 0.1 && b.Get("seeking") == "no", "Relock failed.");
+        a.Set("pause", "yes"); b.Set("pause", "yes");
+        form.Master.TogglePause();
+        await Until(() => a.Number("time-pos") > 10.5 && b.Number("time-pos") > 14.5, "Locked playback failed.");
+        b.Command("seek", "1", "relative+exact");
+        corrections = form.Master.CorrectionCount;
+        await Until(() => form.Master.CorrectionCount > corrections && Math.Abs(b.Number("time-pos") - a.Number("time-pos") - 4) < 0.1, "Periodic correction failed during playback.");
+        Assert(form.Master.Offset == 4 && a.Number("volume") == 35 && b.Number("volume") == 70, "Correction changed offset or volume.");
+        form.Master.TogglePause();
+        form.Reaction.LoadVideo(media);
+        Assert(!form.Master.Locked, "Replacing media must invalidate the lock.");
+        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 4, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
         form.Close();
     }
 }

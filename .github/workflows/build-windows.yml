@@ -28,7 +28,7 @@ jobs:
           Expand-Archive publish/FullLengthPlayer-win-x64.zip -DestinationPath 'publish/launch test'
       - name: Verify packaged executable on Windows
         run: ./scripts/smoke-window.ps1 -Executable './publish/launch test/FullLengthPlayer.exe'
-      - name: Verify two independent MPV players
+      - name: Verify shared transport and fixed-offset sync
         run: ./scripts/smoke-playback.ps1 -Executable './publish/launch test/FullLengthPlayer.exe'
       - name: Upload verified application
         uses: actions/upload-artifact@v4

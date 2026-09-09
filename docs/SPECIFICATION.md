@@ -76,8 +76,8 @@ Do not proceed past a failed or unconfirmed foundation.
 | 0 (confirmed) | Plain black Windows window | Packaged EXE launches, responds, resizes, closes, relaunches; Gonz confirms locally |
 | 1 (confirmed) | One embedded MPV surface, local media | AV1/HEVC, audio and subtitles on Windows |
 | 2 (confirmed) | Two independent MPV instances | Both videos visible and both audio tracks audible |
-| 3 (current) | Shared transport | Master play/pause and seeking affect both |
-| 4 | Offset and drift correction | Offset maintained through seeking; ±0.1s nudging |
+| 3 (confirmed) | Shared transport | Master play/pause and seeking affect both |
+| 4 (current) | Offset and drift correction | Offset maintained through seeking; ±0.1s nudging |
 | 5 | Shared speed, independent audio/subtitles | Speed changes preserve alignment; independent track/volume controls |
 | 6 | Composition | Reaction crop/pan and centered top/bottom source resizing |
 | 7 | Patreon/HLS and headers | Authorized real stream playback with correct Referer |
@@ -113,3 +113,18 @@ Shift-modified independent shortcuts. Each shared seek moves the current pair
 by an equal delta, clamped at either file's start/end. Mixed play/pause states
 converge to both paused on master toggle. No persistent offset or drift loop yet.
 Gonz's confirmation of milestone 3 gates milestone 4.
+
+## Milestone 4 decisions and progress
+
+Gonz confirmed shared transport and reported drift after repeated master seeks.
+Lock current alignment captures B−A once; locked seeks compute B from A's target
+and that fixed value. Offsets/nudges are session state, not saved settings yet.
+Independent pause/seek and media replacement unlock; volume/track edits do not.
+Re-locking explicitly captures the new alignment. Numeric edits and ±0.1 s nudges
+enable lock. Reject offsets without a common playable interval.
+
+Drift above 80 ms is corrected by seeking B only, no more than once per two seconds,
+with settling delays after seeks and transport changes. Corrections wait during
+seeking/buffering or mismatched pause states. Shared seeks clamp to the common
+range; reaching its end pauses both. No speed modulation in this milestone.
+Assess audible correction skips with real media before milestone 5.

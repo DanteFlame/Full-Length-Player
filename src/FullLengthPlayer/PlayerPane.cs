@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace FullLengthPlayer;
 
-// Each pane owns its surface, controls and native instance. No shared transport yet.
+// Each pane owns its surface, controls and native instance.
 internal sealed class PlayerPane : UserControl
 {
     private readonly Panel video = new() { Dock = DockStyle.Fill, BackColor = Color.Black };
@@ -19,6 +19,7 @@ internal sealed class PlayerPane : UserControl
     internal string Role { get; }
     internal bool TrackMenuOpen => audio.DropDown.Visible || subtitles.DropDown.Visible;
     internal event Action<PlayerPane>? Activated;
+    internal event Action? ManualTransport;
 
     public PlayerPane(string role)
     {
@@ -88,15 +89,16 @@ internal sealed class PlayerPane : UserControl
     {
         if (Player == null) throw new InvalidOperationException("MPV is unavailable. Restart with all downloaded files together.");
         if (!File.Exists(path)) throw new FileNotFoundException("Local video not found.", path);
+        ManualTransport?.Invoke();
         playbackError = null;
         fileName = Path.GetFileName(path);
         Player.Command("loadfile", Path.GetFullPath(path), "replace");
         Player.Set("pause", "no");
         ActivatePane();
     }
-    internal void TogglePause() => Player?.Command("cycle", "pause");
-    internal void Seek(int seconds) => Player?.Command("seek", seconds.ToString(CultureInfo.InvariantCulture), "relative+exact");
-    private void SeekTimeline() => Player?.Command("seek", (timeline.Value / 100.0).ToString(CultureInfo.InvariantCulture), "absolute-percent+exact");
+    internal void TogglePause() { ManualTransport?.Invoke(); Player?.Command("cycle", "pause"); }
+    internal void Seek(int seconds) { ManualTransport?.Invoke(); Player?.Command("seek", seconds.ToString(CultureInfo.InvariantCulture), "relative+exact"); }
+    private void SeekTimeline() { ManualTransport?.Invoke(); Player?.Command("seek", (timeline.Value / 100.0).ToString(CultureInfo.InvariantCulture), "absolute-percent+exact"); }
     private void AddSubtitles()
     {
         using var dialog = new OpenFileDialog { Title = $"{Role} — Add subtitles", Filter = "Subtitles|*.srt;*.ass;*.ssa;*.vtt|All files|*.*" };
