@@ -43,6 +43,7 @@ foreach ($attempt in 1..2) {
     try {
         # Deliberately launch from a directory different from the executable's directory.
         $process = Start-Process -FilePath $Executable -WorkingDirectory $env:TEMP -PassThru
+        if (!$process.WaitForInputIdle(30000)) { throw 'Application did not finish initializing its message loop.' }
         $deadline = [DateTime]::UtcNow.AddSeconds(30)
         do {
             $process.Refresh()
@@ -55,13 +56,13 @@ foreach ($attempt in 1..2) {
         if ($process.MainWindowTitle -ne 'Full-Length Player') { throw "Unexpected window: $($process.MainWindowTitle)" }
         if (![WindowProbe]::IsWindowVisible($window)) { throw 'Main window is hidden.' }
         Assert-Responsive $window
-        foreach ($size in @(@(640, 480), @(1100, 700))) {
+        foreach ($size in @(@(480, 320), @(640, 480))) {
             if (![WindowProbe]::MoveWindow($window, 40, 40, $size[0], $size[1], $true)) { throw 'Resize failed.' }
             Assert-Responsive $window
             $rect = New-Object WindowProbe+Rect
             if (![WindowProbe]::GetWindowRect($window, [ref]$rect)) { throw 'Cannot read window bounds.' }
             if (($rect.Right - $rect.Left) -ne $size[0] -or ($rect.Bottom - $rect.Top) -ne $size[1]) {
-                throw 'Window did not adopt the requested dimensions.'
+                throw "Window did not adopt requested $($size[0])x$($size[1]); actual $($rect.Right - $rect.Left)x$($rect.Bottom - $rect.Top)."
             }
         }
         # Catch delayed startup failures and confirm the event loop stays responsive.
