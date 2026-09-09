@@ -19,6 +19,7 @@ Get-Item (Join-Path $Destination 'libmpv-2.dll') | Select-Object Name, Length | 
 # Ship the official redistributable beside the app; do not install machine-wide.
 $vulkanZip = Join-Path $env:TEMP 'flp-vulkan-1.4.357.0.zip'
 Invoke-WebRequest 'https://sdk.lunarg.com/sdk/download/1.4.357.0/windows/vulkan-runtime-components.zip' -OutFile $vulkanZip
+if ((Get-FileHash $vulkanZip).Hash -ne 'A14672EFED15AAFC7F5A16572D35CD3A3416EADF670AEEE3CDF50EE32D5FBF83') { throw 'Vulkan runtime checksum mismatch.' }
 $vulkanDir = Join-Path $Destination 'vulkan-distribution'
 Expand-Archive $vulkanZip -DestinationPath $vulkanDir -Force
 $loaders = @(Get-ChildItem $vulkanDir -Recurse -Filter vulkan-1.dll | Where-Object FullName -Match '[\\/]x64[\\/]')

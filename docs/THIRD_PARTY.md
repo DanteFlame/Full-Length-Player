@@ -21,7 +21,8 @@ by SHA-256. FFmpeg is a test tool and is not included in the application artifac
 
 Vulkan loader: official LunarG runtime components 1.4.357.0, downloaded from
 https://sdk.lunarg.com/sdk/download/1.4.357.0/windows/vulkan-runtime-components.zip
-The x64 loader's Authenticode signature is verified before bundling. Its original
+Archive SHA-256: A14672EFED15AAFC7F5A16572D35CD3A3416EADF670AEEE3CDF50EE32D5FBF83
+The archive hash and the x64 loader's Authenticode signature is verified before bundling. Its original
 distribution/notices are retained in vulkan-distribution. Source and licensing:
 https://github.com/KhronosGroup/Vulkan-Loader/tree/v1.4.357
 The loader is an imported dependency of libmpv, even when using D3D11 output.

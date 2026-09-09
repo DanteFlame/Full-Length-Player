@@ -73,8 +73,8 @@ Do not proceed past a failed or unconfirmed foundation.
 
 | Milestone | Scope | Required verification |
 | --- | --- | --- |
-| 0 (current) | Plain black Windows window | Packaged EXE launches, responds, resizes, closes, relaunches; Gonz confirms locally |
-| 1 | One embedded MPV surface, local media | AV1/HEVC, audio and subtitles on Windows |
+| 0 (confirmed) | Plain black Windows window | Packaged EXE launches, responds, resizes, closes, relaunches; Gonz confirms locally |
+| 1 (current) | One embedded MPV surface, local media | AV1/HEVC, audio and subtitles on Windows |
 | 2 | Two independent MPV instances | Both videos visible and both audio tracks audible |
 | 3 | Shared transport | Master play/pause and seeking affect both |
 | 4 | Offset and drift correction | Offset maintained through seeking; ±0.1s nudging |
