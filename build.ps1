@@ -1,18 +1,15 @@
-$ErrorActionPreference = "Stop"
+param([switch]$SkipSmokeTest)
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+if ($env:OS -ne 'Windows_NT') { throw 'Build and launch verification require Windows.' }
 
-$project = Join-Path $PSScriptRoot "src\FullLengthPlayer\FullLengthPlayer.csproj"
-$out = Join-Path $PSScriptRoot "publish\FullLengthPlayer-win-x64"
-
-if (Test-Path $out) {
-    Remove-Item $out -Recurse -Force
+$project = Join-Path $PSScriptRoot 'src/FullLengthPlayer/FullLengthPlayer.csproj'
+$out = Join-Path $PSScriptRoot 'publish/FullLengthPlayer-win-x64'
+if (Test-Path $out) { Remove-Item $out -Recurse -Force }
+dotnet publish $project -c Release -r win-x64 --self-contained true -o $out
+if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed: $LASTEXITCODE" }
+if (!(Test-Path (Join-Path $out 'FullLengthPlayer.exe'))) { throw 'Executable missing.' }
+if (!$SkipSmokeTest) {
+    & (Join-Path $PSScriptRoot 'scripts/smoke-window.ps1') -Executable (Join-Path $out 'FullLengthPlayer.exe')
 }
-
-New-Item -ItemType Directory -Force -Path $out | Out-Null
-
-dotnet restore $project
-dotnet build $project -c Release -p:Platform=x64 --no-restore
-dotnet publish $project -c Release -r win-x64 --self-contained true -p:Platform=x64 --no-build -o $out
-
-Write-Host ""
-Write-Host "Build complete: $out"
-Write-Host "Run FullLengthPlayer.exe from that folder. Keep the native DLLs beside it."
+Write-Host "Build available at $out"

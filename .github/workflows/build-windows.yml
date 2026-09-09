@@ -5,58 +5,38 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  build:
-    runs-on: windows-latest
-
+  window-foundation:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-
-      - name: Restore
-        run: dotnet restore src/FullLengthPlayer/FullLengthPlayer.csproj -r win-x64
-
-      - name: Build
-        run: dotnet build src/FullLengthPlayer/FullLengthPlayer.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 --no-restore
-
-      - name: Publish win-x64
-        run: dotnet publish src/FullLengthPlayer/FullLengthPlayer.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 --no-restore -o publish/FullLengthPlayer-win-x64
-
-      - name: Validate publish output
-        shell: pwsh
+      - name: Publish self-contained Windows executable
+        run: ./build.ps1 -SkipSmokeTest
+      - name: Package and extract deliverable
         run: |
-          if (!(Test-Path "publish/FullLengthPlayer-win-x64/FullLengthPlayer.exe")) {
-            throw "FullLengthPlayer.exe was not published"
-          }
-          $libvlcPaths = @(
-            "publish/FullLengthPlayer-win-x64/libvlc.dll",
-            "publish/FullLengthPlayer-win-x64/libvlc/win-x64/libvlc.dll"
-          )
-
-          $hasLibVlc = $false
-          foreach ($path in $libvlcPaths) {
-            if (Test-Path $path) {
-              $hasLibVlc = $true
-              break
-            }
-          }
-
-          if (!$hasLibVlc) {
-            throw "libvlc.dll missing from published output (checked root and libvlc/win-x64)"
-          }
-
-      - name: Zip artifact
-        shell: pwsh
-        run: |
-          Compress-Archive -Path publish/FullLengthPlayer-win-x64/* -DestinationPath publish/FullLengthPlayer-win-x64.zip -Force
-
-      - name: Upload artifact
+          Compress-Archive -Path publish/FullLengthPlayer-win-x64/* -DestinationPath publish/FullLengthPlayer-win-x64.zip
+          Expand-Archive publish/FullLengthPlayer-win-x64.zip -DestinationPath 'publish/launch test'
+      - name: Verify packaged executable on Windows
+        run: ./scripts/smoke-window.ps1 -Executable './publish/launch test/FullLengthPlayer.exe'
+      - name: Upload verified application
         uses: actions/upload-artifact@v4
         with:
           name: FullLengthPlayer-win-x64
           path: publish/FullLengthPlayer-win-x64.zip
+          if-no-files-found: error
+      - name: Upload launch evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: window-launch-evidence
+          path: test-results/window-smoke.json
+          if-no-files-found: error

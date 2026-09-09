@@ -1,9 +1,8 @@
 bin/
 obj/
 publish/
+test-results/
 .vs/
-.vscode/
 *.user
-*.suo
-*.log
-TestResults/
+.env
+.env.*
