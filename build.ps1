@@ -9,6 +9,7 @@ if (Test-Path $out) { Remove-Item $out -Recurse -Force }
 dotnet publish $project -c Release -r win-x64 --self-contained true -o $out
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed: $LASTEXITCODE" }
 if (!(Test-Path (Join-Path $out 'FullLengthPlayer.exe'))) { throw 'Executable missing.' }
+& (Join-Path $PSScriptRoot 'scripts/fetch-mpv.ps1') -Destination $out
 if (!$SkipSmokeTest) {
     & (Join-Path $PSScriptRoot 'scripts/smoke-window.ps1') -Executable (Join-Path $out 'FullLengthPlayer.exe')
 }

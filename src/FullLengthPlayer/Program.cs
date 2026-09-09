@@ -10,7 +10,7 @@ internal static class Program
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
             ApplicationConfiguration.Initialize();
             Application.Run(new MainForm());
-            return 0;
+            return Environment.ExitCode;
         }
         catch (Exception error)
         {

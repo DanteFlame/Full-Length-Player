@@ -92,3 +92,10 @@ window/UI layer; it does not choose the media backend. No native player dependen
 is loaded at milestone 0. Introduce libmpv in a separate component at milestone 1,
 keeping startup, playback, synchronization, composition and persistence separate.
 Retain the old commit history for reference; do not resurrect the monolithic form.
+
+## Progress — 2026-09-09
+
+Milestone 0 is confirmed on Gonz's Windows PC: opens, resizes, closes and reopens.
+Milestone 1 adds a single embedded libmpv player and local video test controls.
+The README now describes C#/.NET 8 WinForms + direct libmpv C API integration.
+Do not implement milestone 2 until Gonz confirms local video/audio playback.

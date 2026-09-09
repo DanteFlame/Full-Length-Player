@@ -1,0 +1,30 @@
+param([Parameter(Mandatory)][string]$Executable)
+$ErrorActionPreference = 'Stop'
+$Executable = (Resolve-Path $Executable).Path
+$results = Join-Path $PSScriptRoot '../test-results'
+New-Item -ItemType Directory -Force $results | Out-Null
+$results = (Resolve-Path $results).Path
+$archive = Join-Path $env:TEMP 'flp-ffmpeg.7z'
+Invoke-WebRequest 'https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260901/ffmpeg-x86_64-git-b1f564bda.7z' -OutFile $archive
+if ((Get-FileHash $archive).Hash -ne 'f3e64c10b36d86c88d9cd08c5f36a453b9dba57a80ee38480aba94f1782a0fc2') { throw 'FFmpeg checksum mismatch.' }
+& 7z x $archive "-o$results/ffmpeg" -y | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'FFmpeg extraction failed.' }
+$ffmpeg = (Get-ChildItem "$results/ffmpeg" -Filter ffmpeg.exe -Recurse | Select-Object -First 1).FullName
+$media = Join-Path $results 'local video 日本語.mkv'
+& $ffmpeg -y -f lavfi -i 'testsrc2=size=320x180:rate=24' -f lavfi -i 'sine=frequency=440:sample_rate=48000' -t 12 -c:v mpeg4 -c:a pcm_s16le $media
+if ($LASTEXITCODE -ne 0) { throw 'Fixture generation failed.' }
+@'
+1
+00:00:00,000 --> 00:00:11,000
+Full-Length Player subtitle test
+'@ | Set-Content ([IO.Path]::ChangeExtension($media, '.srt')) -Encoding utf8
+$report = Join-Path $results 'playback.json'
+$p = Start-Process $Executable -ArgumentList @('--verify-playback', "`"$media`"", "`"$report`"") -WorkingDirectory $env:TEMP -PassThru
+try {
+    if (!$p.WaitForExit(90000)) { throw 'Playback test timed out.' }
+    if ($p.ExitCode -ne 0 -or !(Test-Path $report)) {
+        if (Test-Path "$report.error.txt") { Get-Content "$report.error.txt" }
+        throw "Playback test failed: $($p.ExitCode)"
+    }
+    Get-Content $report
+} finally { if (!$p.HasExited) { $p.Kill() }; $p.Dispose() }

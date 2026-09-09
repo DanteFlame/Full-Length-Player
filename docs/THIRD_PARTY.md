@@ -1,0 +1,20 @@
+# Bundled playback engine
+
+libmpv is from https://github.com/shinchiro/mpv-winbuild-cmake/releases/tag/20260901
+Asset: mpv-dev-x86_64-20260901-git-02a595ddc1.7z
+SHA-256: 680feac97f2da3721e331d6b10d2d0e3e02f1113be068fac06aff7f833a165d4
+
+MPV source: https://github.com/mpv-player/mpv/tree/02a595ddc1
+Build recipes and dependency definitions: https://github.com/shinchiro/mpv-winbuild-cmake/tree/cd1edc1
+MPV licensing: https://github.com/mpv-player/mpv/blob/02a595ddc1/Copyright
+MPV documentation: https://mpv.io/manual/master/
+Client API: https://github.com/mpv-player/mpv/blob/02a595ddc1/include/mpv/client.h
+
+The original development distribution, including any upstream notices/headers,
+is retained in mpv-distribution beside the EXE. The copied libmpv DLL is identical.
+MPV and its dependencies retain their respective upstream licenses; bundling them
+does not relicense them as application code. Consult upstream Copyright and the
+pinned build recipes for the GPL/LGPL and other component terms and source locations.
+
+CI fixture generation uses FFmpeg build b1f564bda from the same release, verified
+by SHA-256. FFmpeg is a test tool and is not included in the application artifact.
