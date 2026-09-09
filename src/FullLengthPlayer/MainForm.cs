@@ -12,7 +12,7 @@ internal sealed class MainForm : Form
     private readonly ToolStripDropDownButton speedMenu = new("Speed: 1×");
     internal CompositionView Composition { get; }
     private readonly FlowLayoutPanel compositionBar = new() { Dock = DockStyle.Top, Height = 66, AutoScroll = true, BackColor = SystemColors.Control };
-    private readonly TableLayoutPanel playerControls = new() { Dock = DockStyle.Bottom, Height = 180, ColumnCount = 2, RowCount = 1 };
+    private readonly TableLayoutPanel playerControls = new() { Dock = DockStyle.Bottom, Height = 200, ColumnCount = 2, RowCount = 1 };
     private readonly Label info = new() { Dock = DockStyle.Bottom, Height = 25, ForeColor = Color.White, Text = "A/S/D/G: both speeds • Shift+J/K/L: hovered player • F/F11: fullscreen • Esc: exit fullscreen", AutoEllipsis = true };
     private Rectangle windowBounds;
     private FormWindowState previousState;
@@ -277,6 +277,11 @@ internal sealed class MainForm : Form
     }
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
+        // Fullscreen remains reachable after editing crop/size fields.
+        if (keyData is Keys.F or Keys.F11 || (keyData == Keys.Escape && Fullscreen))
+        {
+            ToggleFullscreen(); return true;
+        }
         if (compositionBar.ContainsFocus || offsetInput.ContainsFocus || Reaction.TrackMenuOpen || Source.TrackMenuOpen || speedMenu.DropDown.Visible)
             return base.ProcessCmdKey(ref msg, keyData);
         try { if (HandleShortcut(keyData, Cursor.Position)) { UpdateMaster(); return true; } }
