@@ -74,13 +74,12 @@ internal sealed class CompositionView : Panel
         int sw = Math.Max(1, (int)Math.Round(Math.Min(width * SourceFraction, height * Aspect(source))));
         int sh = Math.Max(1, (int)Math.Round(sw / Aspect(source)));
         source.Surface.Bounds = new Rectangle((width - sw) / 2, TopAnchor ? 0 : height - sh, sw, sh);
-        source.Surface.BringToFront();
         int size = Math.Max(6, (int)(10 * DeviceDpi / 96.0));
         var rect = SourceBounds;
         for (int i = 0; i < grips.Length; i++)
         {
             grips[i].Bounds = new Rectangle(i % 2 == 0 ? rect.Left : rect.Right - size, i < 2 ? rect.Top : rect.Bottom - size, size, size);
-            grips[i].Visible = ShowHandles; grips[i].BringToFront();
+            grips[i].Visible = ShowHandles;
         }
     }
     internal PlayerPane? HitPlayer(Point screen)

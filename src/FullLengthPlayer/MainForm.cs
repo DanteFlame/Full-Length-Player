@@ -101,6 +101,8 @@ internal sealed class MainForm : Form
         Controls.Add(syncBar);
         Controls.Add(masterBar);
         UpdateMaster();
+        Reaction.Surface.MouseDown += (_, _) => ActiveControl = null;
+        Source.Surface.MouseDown += (_, _) => ActiveControl = null;
         Reaction.Activated += SelectPane;
         Source.Activated += SelectPane;
         SelectPane(Reaction);

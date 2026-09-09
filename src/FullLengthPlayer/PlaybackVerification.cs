@@ -218,7 +218,8 @@ internal static class PlaybackVerification
         // Composition exercises real native surfaces and full-window transitions.
         var ah = form.Reaction.Surface.Handle; var bh = form.Source.Surface.Handle;
         var composition = form.Composition;
-        form.ClientSize = new Size(1100, 800);
+        form.WindowState = FormWindowState.Normal;
+        form.Bounds = Rectangle.Inflate(Screen.FromControl(form).WorkingArea, -20, -20);
         foreach (double aspect in new[] { 16.0 / 9, 4.0 / 3 })
         foreach (bool topAnchor in new[] { false, true })
         foreach (double fraction in new[] { 0.25, 0.7, 1.0 })
@@ -248,7 +249,9 @@ internal static class PlaybackVerification
         Assert(!form.Fullscreen && form.Reaction.Surface.Handle == ah && form.Source.Surface.Handle == bh, "Layout recreated native surfaces.");
         Assert(form.Master.Locked && Math.Abs(form.Master.Offset - 4) < 0.001, "Layout changed sync lock.");
         // Capture the actual composed desktop, in addition to decoded-frame evidence.
-        await Task.Delay(500);
+        await Task.Delay(1000);
+        a.Command("screenshot-to-file", report + ".final-a.png", "subtitles");
+        b.Command("screenshot-to-file", report + ".final-b.png", "subtitles");
         using (var screen = new Bitmap(form.ClientSize.Width, form.ClientSize.Height))
         {
             using var graphics = Graphics.FromImage(screen);
