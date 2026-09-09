@@ -3,29 +3,31 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 2 — two independent MPV players
+## Current build: milestone 3 — shared transport
 
-Gonz confirmed milestone 1 on his Windows PC with both HEVC and AV1 anime:
-video, audio, subtitles, seeking, volume and replacing media all work.
+Gonz confirmed milestone 2: two different codecs play together, with working
+independent playback, seeking, volumes, and named audio/subtitle menus.
 
-This build displays **Reaction A** on the left and **Source B** on the right.
-Each owns an independent MPV instance and has its own:
+The new **BOTH PLAYERS** bar adds play/pause, ±10-second jumps, and a shared
+timeline referenced to Reaction A. Shared controls become available when both
+videos have loaded. If either video is playing, master play/pause pauses both;
+if both are paused, it starts both.
 
-- Open video / drag-and-drop, play/pause, timeline, ±5-second seeking and volume.
-- **Audio** and **Subtitles** dropdown menus with track titles, language, codec,
-  a checkmark for the current selection, and an Off entry. Missing metadata falls
-  back to the track number/type. External subtitles appear in the subtitle menu.
-- External subtitle loading and replacement-media loading.
+Shared seeks move both videos by the same number of seconds from their current
+positions. For example, A at 8 seconds and B at 12 seconds become A at 18 and B
+at 22 after +10. Dragging the shared timeline to A=5 moves B to 9. At either
+file's start/end, the movement of both is limited equally to preserve alignment.
+Seeking retains each player's play/pause state.
 
-Both videos and audio streams can play simultaneously. Controls only affect their
-own player. Click a pane's heading/controls, or use **F1** for A / **F2** for B,
-to select the player for **Space**, **Left/Right** and **Ctrl+O**. The active heading
-is blue and says “Keyboard controls.” Track-menu arrow navigation remains native.
-A command-line first path opens A; an optional second path opens B.
+- **Space**: play/pause both. **Left/Right**: move both ±5 seconds.
+- **F1/F2**: select A/B for independent shortcuts (blue heading).
+- **Shift+Space / Shift+Left / Shift+Right**: selected player only.
+- **Ctrl+O**: open a file in the selected player.
+- Each pane's buttons, timeline, volume and named track menus remain independent.
 
-Side-by-side is a temporary verification layout. Shared transport, synchronization,
-URL loading and the final cropped/anchored overlay composition are later milestones.
-Confirm two simultaneous videos and audible audio before proceeding to milestone 3.
+This is shared command delivery, not a continuous synchronization system. The
+current separation is respected for each seek; there is no saved offset or drift
+correction until milestone 4. Side-by-side is still the temporary test layout.
 
 ## Technology
 
@@ -48,11 +50,11 @@ checks in `PlaybackVerification.cs`. Personal mpv configuration/scripts are disa
 1. Download **FullLengthPlayer-win-x64** from this branch's successful **Build Windows** run.
 2. Extract the artifact and the inner ZIP into a fresh folder. Keep all files together.
 3. Launch **FullLengthPlayer.exe**, choose **Open video**, and select a local MKV/MP4.
-4. Load a different local video into Source B. Confirm both pictures move and both
-   audio tracks are audible. HEVC + AV1 together is a useful real-world test.
-5. Pause, seek and change volume on A; confirm B keeps playing unchanged. Reverse roles.
-6. Use each Audio/Subtitles menu to pick a named track; confirm it affects only that pane.
-7. Replace one video while the other plays. Resize/maximize, close and reopen.
+4. Load Source B. Use **Play / Pause both**, then the ±10-second buttons.
+5. Pause both, position A and B a few seconds apart using their own timelines, then
+   use the shared timeline. Their separation should remain approximately the same.
+6. Test **Space / Left / Right** for both, then **F1/F2 + Shift shortcuts** independently.
+7. Check each pane's controls still affect only that video, then close and reopen.
 
 Please report stutter, black video, missing sound/subtitles, or one player's controls
 unexpectedly affecting the other. Keep all downloaded files together. The app still
@@ -89,7 +91,8 @@ working directory. It verifies visible/responsive windows, resize and clean shut
 twice, then loads two distinct generated local videos with audio. It checks concurrent
 decoding, independent pause/seek/volume, named track selection and checkmarks, external
 subtitle selection/off, track isolation, decoded frame capture from both players,
-resume and replacement on both sides. The media fixture uses a Unicode filename.
+resume and replacement on both sides. Milestone 3 also checks shared play/pause,
+mixed pause states, shared jumps/timeline, unchanged volumes and start/end clamping. The media fixture uses a Unicode filename.
 Application artifacts upload only after both tests pass; JSON/frame/error evidence
 is uploaded separately.
 

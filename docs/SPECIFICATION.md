@@ -75,8 +75,8 @@ Do not proceed past a failed or unconfirmed foundation.
 | --- | --- | --- |
 | 0 (confirmed) | Plain black Windows window | Packaged EXE launches, responds, resizes, closes, relaunches; Gonz confirms locally |
 | 1 (confirmed) | One embedded MPV surface, local media | AV1/HEVC, audio and subtitles on Windows |
-| 2 (current) | Two independent MPV instances | Both videos visible and both audio tracks audible |
-| 3 | Shared transport | Master play/pause and seeking affect both |
+| 2 (confirmed) | Two independent MPV instances | Both videos visible and both audio tracks audible |
+| 3 (current) | Shared transport | Master play/pause and seeking affect both |
 | 4 | Offset and drift correction | Offset maintained through seeking; ±0.1s nudging |
 | 5 | Shared speed, independent audio/subtitles | Speed changes preserve alignment; independent track/volume controls |
 | 6 | Composition | Reaction crop/pan and centered top/bottom source resizing |
@@ -104,3 +104,12 @@ of cycling; milestone 2 includes per-player named audio/subtitle dropdown menus.
 Milestone 2 uses temporary side-by-side panes to verify two independent native
 players and both audio streams. Do not implement shared transport (milestone 3)
 until Gonz confirms this dual-player build on his PC.
+
+## Milestone 3 progress
+
+Gonz confirmed milestone 2 on his PC. Shared transport is now implemented with
+a Reaction A timeline, ±10-second buttons, Space/arrow shared shortcuts and
+Shift-modified independent shortcuts. Each shared seek moves the current pair
+by an equal delta, clamped at either file's start/end. Mixed play/pause states
+converge to both paused on master toggle. No persistent offset or drift loop yet.
+Gonz's confirmation of milestone 3 gates milestone 4.

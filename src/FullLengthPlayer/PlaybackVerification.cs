@@ -21,6 +21,8 @@ internal static class PlaybackVerification
         }
         void Assert(bool condition, string failure) { if (!condition) throw new Exception(failure); }
         var second = Path.Combine(Path.GetDirectoryName(media)!, "source video.mkv");
+        Assert(form.Master.Snapshot() == null, "Shared transport must wait for both media files.");
+        form.Master.TogglePause(); form.Master.Jump(10); // empty pair is safe
         form.Reaction.LoadVideo(media);
         form.Source.LoadVideo(second);
         await Until(() => a.Number("time-pos") > 0.5 && b.Number("time-pos") > 0.5 && a.Number("video-params/w") > 0 && b.Number("video-params/w") > 0, "Both videos must decode concurrently.");
@@ -73,7 +75,36 @@ internal static class PlaybackVerification
         form.Source.LoadVideo(media);
         await Until(() => b.Number("time-pos") < 2, "B replacement failed.");
         await Until(() => b.Number("time-pos") > 0.5, "B replacement did not play.");
-        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 2, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
+        // Shared commands must converge mixed pause states, retain alignment and
+        // leave volume/track choices alone. Exercise the same controller as the UI.
+        a.Set("pause", "yes"); b.Set("pause", "no");
+        form.Master.TogglePause();
+        Assert(a.Get("pause") == "yes" && b.Get("pause") == "yes", "Master pause did not converge mixed states.");
+        a.Command("seek", "8", "absolute+exact"); b.Command("seek", "12", "absolute+exact");
+        await Until(() => Math.Abs(a.Number("time-pos") - 8) < 0.2 && Math.Abs(b.Number("time-pos") - 12) < 0.2, "Cannot prepare alignment test.");
+        form.Master.Jump(10);
+        await Until(() => Math.Abs(a.Number("time-pos") - 18) < 0.2 && Math.Abs(b.Number("time-pos") - 22) < 0.2, "Shared forward skip failed.");
+        form.Master.Jump(-10);
+        await Until(() => Math.Abs(a.Number("time-pos") - 8) < 0.2 && Math.Abs(b.Number("time-pos") - 12) < 0.2, "Shared backward skip failed.");
+        form.Master.SeekReaction(5);
+        await Until(() => Math.Abs(a.Number("time-pos") - 5) < 0.2 && Math.Abs(b.Number("time-pos") - 9) < 0.2, "Shared timeline lost manual alignment.");
+        Assert(a.Get("pause") == "yes" && b.Get("pause") == "yes", "Shared seek changed paused state.");
+        form.Master.Jump(-100);
+        await Until(() => a.Number("time-pos") < 0.2 && Math.Abs(b.Number("time-pos") - 4) < 0.2, "Start boundary must clamp both equally.");
+        form.Master.Jump(100);
+        await Until(() => Math.Abs(a.Number("time-pos") - 36) < 0.3 && b.Number("time-pos") > 39.7, "End boundary must clamp both equally.");
+        form.Master.SeekReaction(8);
+        await Until(() => Math.Abs(a.Number("time-pos") - 8) < 0.3 && Math.Abs(b.Number("time-pos") - 12) < 0.3, "Seek away from end failed.");
+        a.Set("pause", "yes"); b.Set("pause", "yes");
+        form.Master.TogglePause();
+        await Until(() => a.Number("time-pos") > 8.5 && b.Number("time-pos") > 12.5, "Master play failed.");
+        form.Master.TogglePause();
+        await Task.Delay(250);
+        var holdA = a.Number("time-pos"); var holdB = b.Number("time-pos");
+        await Task.Delay(500);
+        Assert(Math.Abs(a.Number("time-pos") - holdA) < 0.15 && Math.Abs(b.Number("time-pos") - holdB) < 0.15, "Master pause failed.");
+        Assert(a.Number("volume") == 35 && b.Number("volume") == 70, "Shared transport changed volume choices.");
+        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 3, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
         form.Close();
     }
 }

@@ -72,7 +72,7 @@ internal sealed class PlayerPane : UserControl
     internal void SetActive(bool active)
     {
         heading.BackColor = active ? Color.FromArgb(40, 90, 140) : Color.FromArgb(55, 55, 55);
-        heading.Text = $"{Role}{(active ? " • Keyboard controls" : "")} — {fileName}";
+        heading.Text = $"{Role}{(active ? " • Independent shortcuts" : "")} — {fileName}";
     }
     private void Execute(Action action)
     {
