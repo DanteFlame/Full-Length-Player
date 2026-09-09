@@ -3,45 +3,64 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 4 — fixed offset and drift correction
+## Current build: milestone 5 — shared speed and coordinated seeking
 
-Gonz confirmed milestone 3's shared controls. He observed drift building up across
-master seeks, which this milestone addresses with a fixed **B = A + offset** model.
+Gonz confirmed milestone 4's fixed offset using aligned anime intro songs. He also
+found that skips could leave the players resuming at different times. This build
+adds speed controls and addresses that remaining seek/resume behavior.
 
-1. Load both local videos and pause both.
-2. Align them using the individual timelines/controls.
-3. Click **Lock current alignment**. The stored offset is Source B time minus Reaction A time.
-4. Use shared play/pause, jumps and the master timeline. Every locked seek derives
-   B's target from that stored value, never from the most recent drifted position.
+### Playback speed and keys
 
-Use **−0.1 s / +0.1 s** (or **comma / period**) to fine-tune B against A. Positive
-nudges move B later in its file; negative nudges move it earlier. You can also type
-seconds in **Offset B−A** and click **Apply offset**, which enables the lock.
-Positive and negative offsets work. Non-overlapping offsets are rejected.
+Shared speed runs from **0.25× to 4×**, adjustable through the toolbar or keyboard.
+Both streams use the same rate; MPV pitch correction remains enabled. Locked speed
+changes preserve the stored offset. Each pane shows its own current speed.
 
-The status shows the fixed offset, measured drift and correction activity. Every
-two seconds, when neither player is seeking/buffering, drift above **80 ms** triggers
-an exact corrective seek of **B only**. A two-second settling period follows shared
-seeks/pauses/offset changes; tiny errors are ignored to avoid repeated micro-seeks.
-This first correction approach can produce a small audible/video skip in B when it
-corrects; assess it with real reaction audio. It does not alter volumes or speed.
+| Key | Action |
+| --- | --- |
+| A | Toggle 1× and the previous speed |
+| S / D | Decrease/increase by 0.25× |
+| G | Toggle favorite speed and the previous speed |
+| J / K / L | Back 5 s / play-pause / forward 5 s, both players |
+| Left / Space / Right | Existing aliases for the same shared actions |
+| Comma / period | Offset −0.1 s / +0.1 s |
+| Shift + A/S/D/G/J/K/L or arrows/Space | Apply to the player under the pointer |
+| F1 / F2 | Choose the fallback player when the pointer is outside both panes |
+| Ctrl+O | Open media in the explicitly selected player |
 
-Shared seeks stay inside the common playable range; at its end both players pause.
-Unlock explicitly for free playback. **Independent seeking, pausing or replacing a
-file automatically unlocks** so correction cannot undo manual changes. Volume and
-track changes leave the lock intact. After realigning, click Lock current alignment
-again. The offset stays fixed across this session's shared controls; saving sessions
-across app restarts remains a later milestone.
+Ordinary keys always target both players. Modified independent playback/speed
+changes unlock sync. Set a shared rate again before re-locking if rates differ.
+Track menus and the offset numeric field retain normal keyboard editing/navigation.
 
-- **Space**: play/pause both. **Left/Right**: shared ±5 seconds; buttons: ±10 seconds.
-- **F1/F2**: select A/B for independent shortcuts (blue heading).
-- **Shift+Space / Shift+Left / Shift+Right**: selected player only, releasing sync lock.
-- **Ctrl+O**: open in the selected player. Track-menu navigation and numeric-field
-  editing keep their normal keys.
-- Each pane retains its independent playback, volume and named audio/subtitle controls.
+**Favorite settings** changes the favorite (default 2×), saved to
+`%LOCALAPPDATA%/FullLengthPlayer/preferences.json`. Session media/offset/layout saving
+is still future work. **H** is reserved for “What Did They Say?” and is not active.
+F/F11 fullscreen remains planned with the composition work.
 
-Side-by-side is still the temporary test layout. Confirm this milestone before
-adding shared playback speed and the later composition/online-source features.
+A/G remember the actual speed on entering that toggle. Repeating the same key
+restores it. S/D or choosing a speed ends the temporary toggle. Switching from A
+to G (or vice versa) starts a new toggle from the speed currently playing; already
+being at the destination with no active toggle is a no-op. Toggle memory is separate
+for master/A/B. Shared changes clear independent toggle history; independent speed
+changes clear master toggle history. Loading media or changing the favorite resets
+the relevant history so stale values are not unexpectedly restored.
+
+### Seek/resume behavior
+
+All shared seeks pause both players, seek, and wait for **both** positions/decoders
+to settle before restoring their previous play/pause intent together. Rapid jumps
+build on the pending target, not an intermediate decoder position. Pressing play/pause
+while seeking changes the eventual resume intent. A 15-second timeout leaves both
+paused with a retry message. An independent action cancels pending automatic resume.
+
+The fixed `B = A + offset` lock, signed offset/nudges and two-second correction cadence
+remain. Automatic corrections now briefly hold both while correcting B, so A cannot
+run away during B's corrective seek. Native pause mismatches while locked pause both
+and allow alignment recovery; they no longer disable correction indefinitely.
+These are separate native players, so sample-perfect audio is not guaranteed; real
+media testing still matters. The 80 ms correction threshold is unchanged.
+
+Side-by-side remains the temporary layout. “What Did They Say?”, fullscreen/cropping,
+Patreon/HLS and YouTube handling are later stages.
 
 ## Technology
 
@@ -64,13 +83,13 @@ checks in `PlaybackVerification.cs`. Personal mpv configuration/scripts are disa
 1. Download **FullLengthPlayer-win-x64** from this branch's successful **Build Windows** run.
 2. Extract the artifact and the inner ZIP into a fresh folder. Keep all files together.
 3. Launch **FullLengthPlayer.exe**, choose **Open video**, and select a local MKV/MP4.
-4. Load Source B, pause both, align the files independently, then click **Lock current alignment**.
-5. Repeatedly jump forward/back and seek across the shared timeline. The stored
-   offset should remain unchanged and transient drift should settle after a few seconds.
-6. Test ±0.1-second nudges and a negative offset; verify the direction matches expectations.
-7. Play for several minutes and listen for correction skips, persistent echo or growing drift.
-8. Confirm independent seeking/pausing unlocks; relock and repeat. Replace a file and
-   verify it unlocks. Volume/track changes should keep the lock enabled.
+4. Load Source B, align while paused, then **Lock current alignment**.
+5. Use S/D to reach 1.5×; test A toggling 1.5× ↔ 1× and G toggling 1.5× ↔ 2×.
+6. Try J/K/L and repeated skips at 1.5× or 2×. Both should wait for seeking and then
+   resume together. Compare with the intro-song test that exposed the earlier drift.
+7. Hover over each pane and use Shift+J/K/L or Shift+S/D. Only that pane should change,
+   and sync should unlock. Restore a shared speed and re-lock afterward.
+8. Change Favorite settings, restart the app, reload media and verify G uses it.
 
 Please report stutter, black video, missing sound/subtitles, or one player's controls
 unexpectedly affecting the other. Keep all downloaded files together. The app still
@@ -111,7 +130,10 @@ resume and replacement on both sides. Milestone 3 also checks shared play/pause,
 mixed pause states, shared jumps/timeline, unchanged volumes and start/end clamping.
 Milestone 4 injects drift during paused and playing states, verifies automatic
 recovery and a stable stored offset across repeated seeks, both nudge directions,
-negative-offset bounds, invalid-offset rejection and unlock on manual edits/reload. The media fixture uses a Unicode filename.
+negative-offset bounds, invalid-offset rejection and unlock on manual edits/reload.
+Milestone 5 tests native speed values, A/G restoration/interleaving, speed limits,
+J/K/L dispatch, hover/fallback targeting, favorite persistence, coordinated resume,
+rapid queued skips and pausing during an in-progress seek. The media fixture uses a Unicode filename.
 Application artifacts upload only after both tests pass; JSON/frame/error evidence
 is uploaded separately.
 

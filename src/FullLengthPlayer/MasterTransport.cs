@@ -10,17 +10,31 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     internal double? Drift { get; private set; }
     internal string SyncStatus { get; private set; } = "Unlocked — align videos, then lock";
     internal int CorrectionCount { get; private set; }
+    private readonly SeekCoordinator seeks = new();
+    internal bool SeekingTogether => seeks.Waiting;
     private long nextCorrection;
+    internal void SetSpeed(double speed)
+    {
+        if (!double.IsFinite(speed) || speed < SpeedControl.Minimum || speed > SpeedControl.Maximum) throw new ArgumentOutOfRangeException(nameof(speed));
+        var p = Snapshot() ?? throw new InvalidOperationException("Load both videos first.");
+        // Holding the pair through a locked change also preserves the stored offset.
+        if (Locked) SeekLocked(p, seeks.ATarget ?? p.ATime);
+        string value = speed.ToString(CultureInfo.InvariantCulture);
+        p.A.Set("speed", value); p.B.Set("speed", value);
+        Settle();
+    }
     private const double Tolerance = 0.08;
     private void Settle() => nextCorrection = Environment.TickCount64 + 2000;
     internal void Unlock(string reason = "Unlocked — align videos, then lock")
     {
-        Locked = false; Drift = null; SyncStatus = reason;
+        seeks.Cancel(); Locked = false; Drift = null; SyncStatus = reason;
     }
     internal void CaptureAlignment()
     {
         var p = Snapshot() ?? throw new InvalidOperationException("Load both videos first.");
-        if (Busy(p)) throw new InvalidOperationException("Wait for both videos to finish seeking before locking.");
+        if (seeks.Waiting || Busy(p)) throw new InvalidOperationException("Wait for both videos to finish seeking before locking.");
+        if (Math.Abs(p.A.Number("speed") - p.B.Number("speed")) > 0.001)
+            throw new InvalidOperationException("Set a shared speed before locking differently paced videos.");
         Offset = p.BTime - p.ATime;
         Locked = true; Drift = 0; SyncStatus = "Locked"; Settle();
     }
@@ -28,12 +42,14 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     {
         if (!double.IsFinite(seconds)) throw new ArgumentOutOfRangeException(nameof(seconds));
         var p = Snapshot() ?? throw new InvalidOperationException("Load both videos first.");
+        if (Math.Abs(p.A.Number("speed") - p.B.Number("speed")) > 0.001)
+            throw new InvalidOperationException("Set a shared speed before locking differently paced videos.");
         if (Math.Max(0, -seconds) >= Math.Min(p.ADuration, p.BDuration - seconds))
             throw new InvalidOperationException("That offset leaves no shared playable range.");
         Offset = seconds; Locked = true;
         if (p.ATime + Offset >= 0 && p.ATime + Offset <= p.BDuration)
         {
-            p.B.Command("seek", (p.ATime + Offset).ToString(CultureInfo.InvariantCulture), "absolute+exact");
+            seeks.Begin(p, p.ATime, p.ATime + Offset, seekA: false);
             SyncStatus = "Locked — applying offset"; Settle();
         }
         else SeekLocked(p, p.ATime);
@@ -43,6 +59,11 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         || p.A.Get("paused-for-cache") == "yes" || p.B.Get("paused-for-cache") == "yes";
     internal void Tick()
     {
+        if (seeks.Waiting)
+        {
+            SyncStatus = seeks.Tick() ?? SyncStatus;
+            Settle(); return;
+        }
         if (!Locked) return;
         var p = Snapshot();
         if (p == null) { SyncStatus = "Waiting for media"; return; }
@@ -60,13 +81,19 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
                 SeekLocked(p, boundaryA);
             SyncStatus = "Shared range ended — seek back to continue"; Settle(); return;
         }
-        if (p.A.Get("pause") != p.B.Get("pause")) { SyncStatus = "Waiting for matching play/pause states"; return; }
+        if (p.A.Get("pause") != p.B.Get("pause"))
+        {
+            // Manual controls unlock first. A mismatch while locked is a native
+            // restart/EOF condition; stop both instead of silently skipping correction forever.
+            p.A.Set("pause", "yes"); p.B.Set("pause", "yes");
+            SyncStatus = "Play/pause mismatch — both paused; press play to continue";
+        }
         SyncStatus = "Locked";
         if (Math.Abs(Drift.Value) > Tolerance)
         {
             try
             {
-                p.B.Command("seek", target.ToString(CultureInfo.InvariantCulture), "absolute+exact");
+                seeks.Begin(p, p.ATime, target, seekA: false);
                 CorrectionCount++; SyncStatus = "Corrected source drift";
             }
             catch (Exception e) { Unlock("Correction stopped: " + e.Message); }
@@ -78,8 +105,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         double low = Math.Max(0, -Offset), high = Math.Min(p.ADuration, p.BDuration - Offset);
         if (high < low) { Unlock("No shared range — realign the videos"); return; }
         double target = Math.Clamp(reactionTime, low, high);
-        p.A.Command("seek", target.ToString(CultureInfo.InvariantCulture), "absolute+exact");
-        p.B.Command("seek", (target + Offset).ToString(CultureInfo.InvariantCulture), "absolute+exact");
+        seeks.Begin(p, target, target + Offset);
         SyncStatus = "Locked — settling after seek"; Settle();
     }
     internal sealed record Position(MpvPlayer A, MpvPlayer B, double ATime, double BTime, double ADuration, double BDuration);
@@ -95,6 +121,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     }
     internal void TogglePause()
     {
+        if (seeks.Waiting) { seeks.TogglePause(); return; }
         var p = Snapshot(); if (p == null) return;
         // Mixed states converge to paused; pressing again starts both.
         string state = p.A.Get("pause") != "yes" || p.B.Get("pause") != "yes" ? "yes" : "no";
@@ -107,19 +134,20 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     }
     internal void SeekReaction(double seconds)
     {
-        var p = Snapshot(); if (p != null) Move(p, seconds - p.ATime);
+        var p = Snapshot(); if (p != null) Move(p, seconds - (seeks.ATarget ?? p.ATime));
     }
     private void Move(Position p, double delta)
     {
         if (!double.IsFinite(delta)) return;
-        if (Locked) { SeekLocked(p, p.ATime + delta); return; }
+        if (Locked) { SeekLocked(p, (seeks.ATarget ?? p.ATime) + delta); return; }
+        if (seeks.ATarget is { } pendingA && seeks.BTarget is { } pendingB)
+            p = p with { ATime = pendingA, BTime = pendingB };
         // Move by the same amount, limiting the pair at either file's start/end.
         // This preserves manual alignment at the instant of this command.
         double lower = Math.Max(-p.ATime, -p.BTime);
         double upper = Math.Min(p.ADuration - p.ATime, p.BDuration - p.BTime);
         if (lower > upper) return;
         delta = Math.Clamp(delta, lower, upper);
-        p.A.Command("seek", (p.ATime + delta).ToString(CultureInfo.InvariantCulture), "absolute+exact");
-        p.B.Command("seek", (p.BTime + delta).ToString(CultureInfo.InvariantCulture), "absolute+exact");
+        seeks.Begin(p, p.ATime + delta, p.BTime + delta);
     }
 }

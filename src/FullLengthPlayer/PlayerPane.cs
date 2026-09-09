@@ -20,10 +20,19 @@ internal sealed class PlayerPane : UserControl
     internal bool TrackMenuOpen => audio.DropDown.Visible || subtitles.DropDown.Visible;
     internal event Action<PlayerPane>? Activated;
     internal event Action? ManualTransport;
+    internal event Action? ManualSpeed;
+    internal event Action? MediaReplaced;
+    internal SpeedControl Speeds { get; }
 
     public PlayerPane(string role)
     {
         Role = role;
+        Speeds = new SpeedControl(() => Player?.Number("speed") ?? 1, value =>
+        {
+            if (Player == null) return;
+            ManualTransport?.Invoke(); ManualSpeed?.Invoke();
+            Player.Set("speed", value.ToString(CultureInfo.InvariantCulture));
+        });
         Dock = DockStyle.Fill;
         BackColor = Color.FromArgb(30, 30, 30);
         Padding = new Padding(3);
@@ -89,7 +98,7 @@ internal sealed class PlayerPane : UserControl
     {
         if (Player == null) throw new InvalidOperationException("MPV is unavailable. Restart with all downloaded files together.");
         if (!File.Exists(path)) throw new FileNotFoundException("Local video not found.", path);
-        ManualTransport?.Invoke();
+        ManualTransport?.Invoke(); MediaReplaced?.Invoke(); Speeds.Reset();
         playbackError = null;
         fileName = Path.GetFileName(path);
         Player.Command("loadfile", Path.GetFullPath(path), "replace");
@@ -145,7 +154,7 @@ internal sealed class PlayerPane : UserControl
         double time = Player.Number("time-pos"), duration = Player.Number("duration");
         if (!dragging) timeline.Value = duration > 0 ? (int)Math.Clamp(time / duration * 10000, 0, 10000) : 0;
         status.Text = playbackError != null ? $"Could not play: {playbackError}" : duration > 0
-            ? $"{(Player.Get("pause") == "yes" ? "Paused" : "Playing")}  {TimeSpan.FromSeconds(time):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(duration):hh\\:mm\\:ss}"
+            ? $"{(Player.Get("pause") == "yes" ? "Paused" : "Playing")}  {TimeSpan.FromSeconds(time):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(duration):hh\\:mm\\:ss}  • {Player.Number("speed"):0.##}×"
             : "Open a local video";
     }
     internal void Shutdown() { Player?.Dispose(); Player = null; }

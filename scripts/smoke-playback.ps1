@@ -25,7 +25,7 @@ Full-Length Player subtitle test
 $report = Join-Path $results 'playback.json'
 $p = Start-Process $Executable -ArgumentList @('--verify-playback', "`"$media`"", "`"$report`"") -WorkingDirectory $env:TEMP -PassThru
 try {
-    if (!$p.WaitForExit(90000)) { throw 'Playback test timed out.' }
+    if (!$p.WaitForExit(180000)) { throw 'Playback test timed out.' }
     if ($p.ExitCode -ne 0 -or !(Test-Path $report)) {
         if (Test-Path "$report.error.txt") { Get-Content "$report.error.txt" }
         throw "Playback test failed: $($p.ExitCode)"

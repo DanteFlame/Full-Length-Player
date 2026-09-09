@@ -10,10 +10,10 @@ internal static class PlaybackVerification
     {
         var a = form.Reaction.Player!;
         var b = form.Source.Player!;
-        async Task Until(Func<bool> condition, string failure)
+        async Task Until(Func<bool> condition, string failure, bool waitTransport = true)
         {
             var deadline = DateTime.UtcNow.AddSeconds(25);
-            while (!condition())
+            while (!condition() || (waitTransport && form.Master.SeekingTogether))
             {
                 if (DateTime.UtcNow > deadline) throw new Exception(failure);
                 await Task.Delay(100);
@@ -157,7 +157,75 @@ internal static class PlaybackVerification
         await Until(() => Math.Abs(a.Number("time-pos") - 36) < 0.1 && b.Number("time-pos") > 39.7 && a.Get("pause") == "yes" && b.Get("pause") == "yes", "Correction must restore an overshot shared endpoint.");
         form.Reaction.LoadVideo(media);
         Assert(!form.Master.Locked, "Replacing media must invalidate the lock.");
-        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 4, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
+        // Milestone 5: exercise the real keyboard dispatcher and native speed properties.
+        await Until(() => a.Number("time-pos") > 0.3 && a.Get("seeking") == "no", "Reload not ready for speed test.");
+        a.Set("pause", "yes"); b.Set("pause", "yes");
+        a.Command("seek", "8", "absolute+exact"); b.Command("seek", "12", "absolute+exact");
+        await Until(() => Math.Abs(a.Number("time-pos") - 8) < 0.1 && Math.Abs(b.Number("time-pos") - 12) < 0.1 && a.Get("seeking") == "no" && b.Get("seeking") == "no", "Speed test alignment failed.");
+        form.Master.CaptureAlignment();
+        var pointerA = form.Reaction.PointToScreen(new Point(20, 20));
+        var pointerB = form.Source.PointToScreen(new Point(20, 20));
+        void Key(Keys key) => Assert(form.HandleShortcut(key, pointerA), "Unrecognized shortcut " + key);
+        async Task Speed(double expected)
+        {
+            await Until(() => Math.Abs(a.Number("speed") - expected) < 0.001 && Math.Abs(b.Number("speed") - expected) < 0.001, "Shared speed incorrect.");
+            Assert(form.Master.Locked && Math.Abs(form.Master.Offset - 4) < 0.001, "Speed change broke stored sync.");
+        }
+        Key(Keys.D); await Speed(1.25);
+        Key(Keys.D); await Speed(1.5);
+        Key(Keys.A); await Speed(1);
+        Key(Keys.A); await Speed(1.5);
+        Key(Keys.G); await Speed(2);
+        Key(Keys.G); await Speed(1.5);
+        Key(Keys.A); await Speed(1);
+        Key(Keys.G); await Speed(2); // entering a different toggle remembers current 1x
+        Key(Keys.G); await Speed(1);
+        Key(Keys.D); await Speed(1.25); // explicit adjustment ends the previous toggle
+        Key(Keys.A); await Speed(1);
+        Key(Keys.A); await Speed(1.25);
+        Key(Keys.S); await Speed(1);
+        Key(Keys.S); await Speed(0.75);
+        form.SharedSpeed.Set(0); await Speed(0.25);
+        form.SharedSpeed.Set(10); await Speed(4);
+        form.SharedSpeed.Set(1.5); await Speed(1.5);
+        Assert(a.Get("audio-pitch-correction") == "yes" && b.Get("audio-pitch-correction") == "yes", "Pitch correction unavailable.");
+        Key(Keys.L);
+        await Until(() => Math.Abs(a.Number("time-pos") - 13) < 0.1 && Math.Abs(b.Number("time-pos") - 17) < 0.1, "L shared seek failed.");
+        Key(Keys.J);
+        await Until(() => Math.Abs(a.Number("time-pos") - 8) < 0.1 && Math.Abs(b.Number("time-pos") - 12) < 0.1, "J shared seek failed.");
+        // Rapid queued jumps use requested positions, not stale decoder positions.
+        form.Master.Jump(5); form.Master.Jump(5); form.Master.Jump(-5);
+        await Until(() => Math.Abs(a.Number("time-pos") - 13) < 0.1 && Math.Abs(b.Number("time-pos") - 17) < 0.1, "Rapid skips lost their intended target.");
+        Key(Keys.K);
+        await Until(() => a.Number("time-pos") > 13.5 && b.Number("time-pos") > 17.5, "K shared play failed.");
+        form.Master.SeekReaction(5);
+        Assert(form.Master.SeekingTogether && a.Get("pause") == "yes" && b.Get("pause") == "yes", "Shared seek must hold both decoders.");
+        await Until(() => !form.Master.SeekingTogether && a.Get("pause") == "no" && b.Get("pause") == "no", "Both videos did not resume after seeking.");
+        Assert(Math.Abs(b.Number("time-pos") - a.Number("time-pos") - 4) < 0.12, "Resume did not preserve sync.");
+        form.Master.Jump(5);
+        Key(Keys.K); // pause requested while seeking must cancel automatic resume
+        await Until(() => a.Get("pause") == "yes" && b.Get("pause") == "yes", "Pause during seek was ignored.");
+        // A decoder pause mismatch while locked must not suspend correction forever.
+        b.Set("pause", "no");
+        await Until(() => a.Get("pause") == "yes" && b.Get("pause") == "yes" && Math.Abs(b.Number("time-pos") - a.Number("time-pos") - 4) < 0.12, "Native pause mismatch did not recover.");
+        // Hover wins for modified shortcuts; unmodified actions remain shared.
+        form.HandleShortcut(Keys.Shift | Keys.D, pointerB);
+        Assert(!form.Master.Locked && a.Number("speed") == 1.5 && b.Number("speed") == 1.75, "Hover speed control affected the wrong player.");
+        form.HandleShortcut(Keys.F1, pointerB);
+        Assert(form.HoverTarget(pointerB) == form.Source && form.HoverTarget(new Point(-10000, -10000)) == form.Reaction, "Hover/fallback targeting failed.");
+        form.SharedSpeed.Set(1.5);
+        await Until(() => a.Number("speed") == 1.5 && b.Number("speed") == 1.5, "Shared speed did not restore equal rates.");
+        var preferencesFile = report + ".preferences.tmp";
+        var preferences = new SpeedPreferences(preferencesFile);
+        Assert(preferences.Favorite == 2, "Default favorite incorrect.");
+        preferences.Save(2.25);
+        Assert(new SpeedPreferences(preferencesFile).Favorite == 2.25, "Favorite preference was not persisted.");
+        File.WriteAllText(preferencesFile, "invalid json");
+        Assert(new SpeedPreferences(preferencesFile).Favorite == 2, "Malformed preferences should fall back safely.");
+        File.Delete(preferencesFile);
+        Assert(!form.HandleShortcut(Keys.H, pointerA), "H must remain reserved for the later replay feature.");
+        Assert(a.Number("volume") == 35 && b.Number("volume") == 70, "Speed shortcuts changed volumes.");
+        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 5, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
         form.Close();
     }
 }

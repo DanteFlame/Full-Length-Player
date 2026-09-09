@@ -4,9 +4,13 @@ internal sealed class MainForm : Form
 {
     internal PlayerPane Reaction { get; } = new("Reaction A");
     internal PlayerPane Source { get; } = new("Source B");
-    private readonly System.Windows.Forms.Timer timer = new() { Interval = 200 };
+    private readonly System.Windows.Forms.Timer timer = new() { Interval = 50 };
     private PlayerPane active;
     internal MasterTransport Master { get; }
+    internal SpeedControl SharedSpeed { get; }
+    internal SpeedPreferences Preferences { get; } = new();
+    private readonly ToolStripDropDownButton speedMenu = new("Speed: 1×");
+    private long nextUiUpdate;
     private readonly ToolStrip masterBar = new() { Dock = DockStyle.Top, GripStyle = ToolStripGripStyle.Hidden };
     private readonly TrackBar masterTimeline = new() { Dock = DockStyle.Top, Height = 32, Maximum = 10000, TickStyle = TickStyle.None };
     private readonly Label masterStatus = new() { Dock = DockStyle.Top, Height = 24, ForeColor = Color.White, AutoEllipsis = true };
@@ -25,6 +29,14 @@ internal sealed class MainForm : Form
         AutoScaleMode = AutoScaleMode.Dpi;
         active = Reaction;
         Master = new MasterTransport(() => Reaction.Player, () => Source.Player);
+        SharedSpeed = new SpeedControl(() => Reaction.Player?.Number("speed") ?? 1, value =>
+        {
+            Master.SetSpeed(value); Reaction.Speeds.Reset(); Source.Speeds.Reset();
+        });
+        Reaction.ManualSpeed += SharedSpeed.Reset;
+        Source.ManualSpeed += SharedSpeed.Reset;
+        Reaction.MediaReplaced += SharedSpeed.Reset;
+        Source.MediaReplaced += SharedSpeed.Reset;
         Reaction.ManualTransport += () => Master.Unlock("Unlocked by independent control — relock after aligning");
         Source.ManualTransport += () => Master.Unlock("Unlocked by independent control — relock after aligning");
         void SyncButton(string text, Action action)
@@ -52,6 +64,20 @@ internal sealed class MainForm : Form
         MasterButton("Play / Pause both", Master.TogglePause);
         MasterButton("−10 s both", () => Master.Jump(-10));
         MasterButton("+10 s both", () => Master.Jump(10));
+        masterBar.Items.Add(new ToolStripSeparator());
+        MasterButton("−0.25× (S)", () => SharedSpeed.Step(-0.25));
+        MasterButton("+0.25× (D)", () => SharedSpeed.Step(0.25));
+        masterBar.Items.Add(speedMenu);
+        for (double speed = 0.25; speed <= 4; speed += 0.25)
+        {
+            double value = speed;
+            var item = new ToolStripMenuItem($"{value:0.##}×");
+            item.Click += (_, _) => RunMaster(() => SharedSpeed.Set(value));
+            speedMenu.DropDownItems.Add(item);
+        }
+        MasterButton("1× ↔ (A)", () => SharedSpeed.Toggle("normal", 1));
+        MasterButton("Favorite ↔ (G)", () => SharedSpeed.Toggle("favorite", Preferences.Favorite));
+        MasterButton("Favorite settings", EditFavorite);
         masterTimeline.MouseDown += (_, _) => masterDragging = true;
         masterTimeline.MouseUp += (_, _) => { masterDragging = false; SeekMasterTimeline(); };
         masterTimeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown) SeekMasterTimeline(); };
@@ -61,7 +87,7 @@ internal sealed class MainForm : Form
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.Controls.Add(Reaction, 0, 0);
         layout.Controls.Add(Source, 1, 0);
-        var info = new Label { Dock = DockStyle.Bottom, Height = 25, ForeColor = Color.White, Text = "Space / arrows: BOTH • F1 / F2: select A / B • Shift+Space / Shift+arrows: selected player • Ctrl+O: open", AutoEllipsis = true };
+        var info = new Label { Dock = DockStyle.Bottom, Height = 25, ForeColor = Color.White, Text = "A/S/D/G: speed • J/K/L or arrows/Space: BOTH • Shift: player under mouse (F1/F2 fallback) • H: reserved", AutoEllipsis = true };
         Controls.Add(layout);
         Controls.Add(info);
         Controls.Add(masterTimeline);
@@ -72,7 +98,13 @@ internal sealed class MainForm : Form
         Reaction.Activated += SelectPane;
         Source.Activated += SelectPane;
         SelectPane(Reaction);
-        timer.Tick += (_, _) => { Reaction.UpdatePlayback(); Source.UpdatePlayback(); try { Master.Tick(); } catch (Exception e) { Master.Unlock("Sync stopped: " + e.Message); } UpdateMaster(); };
+        timer.Tick += (_, _) =>
+        {
+            try { Master.Tick(); } catch (Exception e) { Master.Unlock("Sync stopped: " + e.Message); }
+            if (Environment.TickCount64 < nextUiUpdate) return;
+            nextUiUpdate = Environment.TickCount64 + 200;
+            Reaction.UpdatePlayback(); Source.UpdatePlayback(); UpdateMaster();
+        };
         Shown += async (_, _) =>
         {
             var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
@@ -115,6 +147,8 @@ internal sealed class MainForm : Form
     private void UpdateMaster()
     {
         var position = Master.Snapshot();
+        double aSpeed = Reaction.Player?.Number("speed") ?? 1, bSpeed = Source.Player?.Number("speed") ?? 1;
+        speedMenu.Text = Math.Abs(aSpeed - bSpeed) < 0.001 ? $"Speed: {aSpeed:0.##}×" : $"Speed A/B: {aSpeed:0.##}× / {bSpeed:0.##}×";
         masterBar.Enabled = masterTimeline.Enabled = syncBar.Enabled = position != null;
         syncStatus.Text = $"{Master.SyncStatus}" + (Master.Locked ? $" • Fixed offset {Master.Offset:+0.000;-0.000;0.000} s • Drift {Master.Drift.GetValueOrDefault():+0.000;-0.000;0.000} s" : "");
         if (displayedOffset != Master.Offset)
@@ -133,27 +167,57 @@ internal sealed class MainForm : Form
         Reaction.SetActive(pane == Reaction);
         Source.SetActive(pane == Source);
     }
+    private void EditFavorite()
+    {
+        using var dialog = new Form { Text = "Favorite playback speed", ClientSize = new Size(300, 105), FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent, MinimizeBox = false, MaximizeBox = false };
+        var field = new NumericUpDown { Left = 20, Top = 15, Width = 130, Minimum = 0.25m, Maximum = 4, Increment = 0.25m, DecimalPlaces = 2, Value = (decimal)Preferences.Favorite };
+        var save = new Button { Text = "Save", Left = 190, Top = 60, DialogResult = DialogResult.OK };
+        dialog.Controls.Add(field); dialog.Controls.Add(save); dialog.AcceptButton = save;
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        Preferences.Save((double)field.Value);
+        SharedSpeed.Reset(); Reaction.Speeds.Reset(); Source.Speeds.Reset();
+    }
+    internal PlayerPane HoverTarget(Point cursor)
+    {
+        if (Reaction.RectangleToScreen(Reaction.ClientRectangle).Contains(cursor)) return Reaction;
+        if (Source.RectangleToScreen(Source.ClientRectangle).Contains(cursor)) return Source;
+        return active;
+    }
+    internal bool HandleShortcut(Keys keyData, Point cursor)
+    {
+        bool shift = (keyData & Keys.Modifiers) == Keys.Shift;
+        Keys key = keyData & Keys.KeyCode;
+        if (keyData == Keys.F1) { SelectPane(Reaction); return true; }
+        if (keyData == Keys.F2) { SelectPane(Source); return true; }
+        if (keyData == (Keys.Control | Keys.O)) { active.Open(); return true; }
+        if ((keyData & Keys.Modifiers) != Keys.None && !shift) return false;
+        var target = HoverTarget(cursor);
+        var speeds = shift ? target.Speeds : SharedSpeed;
+        switch (key)
+        {
+            case Keys.A: speeds.Toggle("normal", 1); break;
+            case Keys.S: speeds.Step(-0.25); break;
+            case Keys.D: speeds.Step(0.25); break;
+            case Keys.G: speeds.Toggle("favorite", Preferences.Favorite); break;
+            case Keys.J:
+            case Keys.Left: if (shift) target.Seek(-5); else Master.Jump(-5); break;
+            case Keys.L:
+            case Keys.Right: if (shift) target.Seek(5); else Master.Jump(5); break;
+            case Keys.K:
+            case Keys.Space: if (shift) target.TogglePause(); else Master.TogglePause(); break;
+            case Keys.Oemcomma when !shift: Master.Nudge(-0.1); break;
+            case Keys.OemPeriod when !shift: Master.Nudge(0.1); break;
+            default: return false;
+        }
+        return true;
+    }
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
-        if (offsetInput.ContainsFocus || Reaction.TrackMenuOpen || Source.TrackMenuOpen) return base.ProcessCmdKey(ref msg, keyData);
-        Action? action = keyData switch
-        {
-            Keys.Oemcomma => () => RunMaster(() => Master.Nudge(-0.1)),
-            Keys.OemPeriod => () => RunMaster(() => Master.Nudge(0.1)),
-            Keys.F1 => () => SelectPane(Reaction),
-            Keys.F2 => () => SelectPane(Source),
-            Keys.Control | Keys.O => () => active.Open(),
-            Keys.Space => Master.TogglePause,
-            Keys.Left => () => Master.Jump(-5),
-            Keys.Right => () => Master.Jump(5),
-            Keys.Shift | Keys.Space => () => active.TogglePause(),
-            Keys.Shift | Keys.Left => () => active.Seek(-5),
-            Keys.Shift | Keys.Right => () => active.Seek(5),
-            _ => null
-        };
-        if (action == null) return base.ProcessCmdKey(ref msg, keyData);
-        try { action(); } catch (Exception e) { MessageBox.Show(this, e.Message, "Playback error"); }
-        return true;
+        if (offsetInput.ContainsFocus || Reaction.TrackMenuOpen || Source.TrackMenuOpen || speedMenu.DropDown.Visible)
+            return base.ProcessCmdKey(ref msg, keyData);
+        try { if (HandleShortcut(keyData, Cursor.Position)) { UpdateMaster(); return true; } }
+        catch (Exception e) { MessageBox.Show(this, e.Message, "Playback error"); return true; }
+        return base.ProcessCmdKey(ref msg, keyData);
     }
     protected override void OnFormClosed(FormClosedEventArgs e)
     {

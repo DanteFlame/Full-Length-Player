@@ -54,13 +54,16 @@ mistake the roadmap for features already delivered.
 
 ## “What Did They Say?” (later; no implementation now)
 
-Button and keyboard shortcut (key assignment deferred):
+Button and **H** keyboard shortcut (future implementation):
 
 1. Capture reaction trigger time, shared speed, both volumes and both mute states.
 2. Rewind both videos ten seconds, preserving their offset.
 3. Set both to 1.0×, mute source, set reaction volume to 100% and unmute reaction.
 4. Play until A reaches the original trigger time.
-5. Restore the actual captured speed, volumes and mute states exactly; continue forward.
+5. Restore the actual captured speed, volumes and mute states exactly for both players; continue forward.
+
+Maintain the stored sync offset and lock throughout the replay. H is reserved now;
+do not activate it until the reaction-conveniences milestone.
 
 Re-triggering, manual seeks during replay, paused activation, buffering and proximity
 to the start/end require explicit behavior and tests at that milestone. They must not
@@ -77,8 +80,8 @@ Do not proceed past a failed or unconfirmed foundation.
 | 1 (confirmed) | One embedded MPV surface, local media | AV1/HEVC, audio and subtitles on Windows |
 | 2 (confirmed) | Two independent MPV instances | Both videos visible and both audio tracks audible |
 | 3 (confirmed) | Shared transport | Master play/pause and seeking affect both |
-| 4 (current) | Offset and drift correction | Offset maintained through seeking; ±0.1s nudging |
-| 5 | Shared speed, independent audio/subtitles | Speed changes preserve alignment; independent track/volume controls |
+| 4 (confirmed, seek/resume refinement in 5) | Offset and drift correction | Offset maintained through seeking; ±0.1s nudging |
+| 5 (current) | Shared speed, independent audio/subtitles | Speed changes preserve alignment; independent track/volume controls |
 | 6 | Composition | Reaction crop/pan and centered top/bottom source resizing |
 | 7 | Patreon/HLS and headers | Authorized real stream playback with correct Referer |
 | 8 | YouTube resolution | Unlisted reaction URL playback |
@@ -165,3 +168,26 @@ Do not invent final rules for these edge cases or silently change the stored off
 Keep normal text/numeric editing and menu navigation intact when a control has focus.
 Fullscreen applies to the full composition/window; per-player fullscreen was not
 requested. These preferences do not authorize advancing beyond milestone 4's test gate.
+
+## Milestone 5 decisions and user feedback
+
+Gonz confirmed milestone 4 by matching intro songs across episodes. Locked offset
+works, but repeated skips can cause asynchronous resumes; a small master timeline
+seek often restores near-perfect audible alignment. M5 therefore coordinates shared
+seeks/corrections by holding both paused until both decoders reach their targets,
+then resuming according to preserved intent. Queued skips accumulate from requested
+targets; pause during seek overrides resume. Timeouts leave both paused for retry.
+Independent transport cancels a pending shared resume and unlocks. Native pause
+mismatches while locked pause the pair rather than suspending correction forever.
+
+Implement A/S/D/G and J/K/L plus Shift-hover independent targeting in M5. Shared rates
+0.25–4×, step 0.25×, pitch correction on. Favorite defaults 2× and is user-configurable
+and saved. One active speed toggle per target: same key restores prior speed; S/D or
+direct selection clears it; switching A/G starts anew from current speed; already
+at the destination is a no-op without an active toggle. Main and each pane have
+separate toggle histories; rate changes outside a target clear its obsolete history.
+F/F11 fullscreen remains planned for composition work. H remains reserved for the
+exact replay/mute/volume/speed restoration behavior above.
+
+M4 is accepted with the noted refinement. M5 requires Gonz's Windows playback test
+before advancing to composition. No claim of sample-perfect synchronization.
