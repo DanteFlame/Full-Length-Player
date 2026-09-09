@@ -33,7 +33,7 @@ internal sealed class MainForm : Form
         MasterButton("+10 s both", () => Master.Jump(10));
         masterTimeline.MouseDown += (_, _) => masterDragging = true;
         masterTimeline.MouseUp += (_, _) => { masterDragging = false; SeekMasterTimeline(); };
-        masterTimeline.KeyUp += (_, _) => SeekMasterTimeline();
+        masterTimeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown) SeekMasterTimeline(); };
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty, Padding = Padding.Empty };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));

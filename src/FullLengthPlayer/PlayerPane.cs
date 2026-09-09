@@ -57,7 +57,7 @@ internal sealed class PlayerPane : UserControl
         Controls.Add(heading);
         timeline.MouseDown += (_, _) => { ActivatePane(); dragging = true; };
         timeline.MouseUp += (_, _) => { dragging = false; Execute(SeekTimeline); };
-        timeline.KeyUp += (_, _) => Execute(SeekTimeline);
+        timeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown) Execute(SeekTimeline); };
         Enter += (_, _) => ActivatePane();
         heading.Click += (_, _) => ActivatePane();
         video.Click += (_, _) => ActivatePane();
