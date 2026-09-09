@@ -3,19 +3,29 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 1 — one embedded MPV player
+## Current build: milestone 2 — two independent MPV players
 
-Milestone 0 passed Windows CI and Gonz confirmed the downloaded EXE opens, resizes,
-closes and reopens on his PC. This next build adds **one local-video player**:
+Gonz confirmed milestone 1 on his Windows PC with both HEVC and AV1 anime:
+video, audio, subtitles, seeking, volume and replacing media all work.
 
-- Open a local video with **Open video**, **Ctrl+O**, drag-and-drop, or a command-line path.
-- Play/pause with the button or **Space**; seek with the timeline or **Left/Right** (5 seconds).
-- Set volume from 0–100%; cycle embedded audio/subtitle tracks or load external subtitles.
-- Resize/maximize the window while the video stays embedded and preserves its aspect ratio.
+This build displays **Reaction A** on the left and **Source B** on the right.
+Each owns an independent MPV instance and has its own:
 
-This is an incremental test build. Two players, synchronization, URL loading and the
-final composition layout are still future milestones. Confirm local playback on
-Gonz's PC before implementing the second player.
+- Open video / drag-and-drop, play/pause, timeline, ±5-second seeking and volume.
+- **Audio** and **Subtitles** dropdown menus with track titles, language, codec,
+  a checkmark for the current selection, and an Off entry. Missing metadata falls
+  back to the track number/type. External subtitles appear in the subtitle menu.
+- External subtitle loading and replacement-media loading.
+
+Both videos and audio streams can play simultaneously. Controls only affect their
+own player. Click a pane's heading/controls, or use **F1** for A / **F2** for B,
+to select the player for **Space**, **Left/Right** and **Ctrl+O**. The active heading
+is blue and says “Keyboard controls.” Track-menu arrow navigation remains native.
+A command-line first path opens A; an optional second path opens B.
+
+Side-by-side is a temporary verification layout. Shared transport, synchronization,
+URL loading and the final cropped/anchored overlay composition are later milestones.
+Confirm two simultaneous videos and audible audio before proceeding to milestone 3.
 
 ## Technology
 
@@ -29,7 +39,8 @@ The download includes the .NET runtime, `libmpv-2.dll`, and the official Vulkan 
 required by this MPV build (even though playback uses D3D11). Build tooling pins the
 standard x86_64 shinchiro MPV build dated 20260901 and checks its SHA-256 before
 unpacking; it does not require an x86_64-v3 CPU. See [third-party details](docs/THIRD_PARTY.md).
-The native wrapper is isolated in `MpvPlayer.cs`, UI in `MainForm.cs`, and CI playback
+The native wrapper is isolated in `MpvPlayer.cs`, each player and its controls in
+`PlayerPane.cs`, window orchestration in `MainForm.cs`, and CI playback
 checks in `PlaybackVerification.cs`. Personal mpv configuration/scripts are disabled.
 
 ## Download and test
@@ -37,13 +48,15 @@ checks in `PlaybackVerification.cs`. Personal mpv configuration/scripts are disa
 1. Download **FullLengthPlayer-win-x64** from this branch's successful **Build Windows** run.
 2. Extract the artifact and the inner ZIP into a fresh folder. Keep all files together.
 3. Launch **FullLengthPlayer.exe**, choose **Open video**, and select a local MKV/MP4.
-4. Check moving video and audible sound. Try an AV1 and/or HEVC file if available.
-5. Pause/resume, seek forward/back, adjust volume, and select subtitles/audio tracks.
-6. Resize/maximize while playing, open another file, then close and reopen the app.
+4. Load a different local video into Source B. Confirm both pictures move and both
+   audio tracks are audible. HEVC + AV1 together is a useful real-world test.
+5. Pause, seek and change volume on A; confirm B keeps playing unchanged. Reverse roles.
+6. Use each Audio/Subtitles menu to pick a named track; confirm it affects only that pane.
+7. Replace one video while the other plays. Resize/maximize, close and reopen.
 
-Please report any black video, missing sound/subtitles, playback stutter or errors,
-along with the codec/file type. The status line shows current audio/subtitle track IDs.
-The window still has its temporary standard Windows icon and title bar.
+Please report stutter, black video, missing sound/subtitles, or one player's controls
+unexpectedly affecting the other. Keep all downloaded files together. The app still
+has its temporary standard Windows icon and title bar.
 
 ## Planned full player
 
@@ -73,12 +86,14 @@ The script downloads the pinned native dependency and runs window verification.
 
 GitHub Actions tests the extracted ZIP from a path containing spaces and an unrelated
 working directory. It verifies visible/responsive windows, resize and clean shutdown
-twice, then uses a generated local video with audio and subtitles to check native
-initialization, decoding, pause, seek, volume, subtitle selection, frame capture,
-resume and reopening media. It tests a Unicode filename too. Application artifacts
-are uploaded only after both tests pass; JSON/frame/error evidence is uploaded separately.
+twice, then loads two distinct generated local videos with audio. It checks concurrent
+decoding, independent pause/seek/volume, named track selection and checkmarks, external
+subtitle selection/off, track isolation, decoded frame capture from both players,
+resume and replacement on both sides. The media fixture uses a Unicode filename.
+Application artifacts upload only after both tests pass; JSON/frame/error evidence
+is uploaded separately.
 
 CI uses a null audio output because hosted runners have no speakers. It proves audio
 decoding, not audible output. Its synthetic MPEG-4 fixture does not establish AV1/HEVC,
-hardware-decoding or subtitle correctness on every PC; those are the manual test above.
+hardware-decoding or subtitle correctness on every PC; those are the manual tests above.
 Caught startup errors are logged to `%LOCALAPPDATA%/FullLengthPlayer/logs/startup-error.log`.

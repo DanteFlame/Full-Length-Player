@@ -74,8 +74,8 @@ Do not proceed past a failed or unconfirmed foundation.
 | Milestone | Scope | Required verification |
 | --- | --- | --- |
 | 0 (confirmed) | Plain black Windows window | Packaged EXE launches, responds, resizes, closes, relaunches; Gonz confirms locally |
-| 1 (current) | One embedded MPV surface, local media | AV1/HEVC, audio and subtitles on Windows |
-| 2 | Two independent MPV instances | Both videos visible and both audio tracks audible |
+| 1 (confirmed) | One embedded MPV surface, local media | AV1/HEVC, audio and subtitles on Windows |
+| 2 (current) | Two independent MPV instances | Both videos visible and both audio tracks audible |
 | 3 | Shared transport | Master play/pause and seeking affect both |
 | 4 | Offset and drift correction | Offset maintained through seeking; ±0.1s nudging |
 | 5 | Shared speed, independent audio/subtitles | Speed changes preserve alignment; independent track/volume controls |
@@ -98,4 +98,9 @@ Retain the old commit history for reference; do not resurrect the monolithic for
 Milestone 0 is confirmed on Gonz's Windows PC: opens, resizes, closes and reopens.
 Milestone 1 adds a single embedded libmpv player and local video test controls.
 The README now describes C#/.NET 8 WinForms + direct libmpv C API integration.
-Do not implement milestone 2 until Gonz confirms local video/audio playback.
+Gonz confirmed milestone 1 with HEVC and AV1 anime: video/audio/subtitles, seeking,
+volume and replacement loading all work. He requested named track lists instead
+of cycling; milestone 2 includes per-player named audio/subtitle dropdown menus.
+Milestone 2 uses temporary side-by-side panes to verify two independent native
+players and both audio streams. Do not implement shared transport (milestone 3)
+until Gonz confirms this dual-player build on his PC.

@@ -12,8 +12,11 @@ if ($LASTEXITCODE -ne 0) { throw 'FFmpeg extraction failed.' }
 $ffmpeg = (Get-ChildItem "$results/ffmpeg" -Filter ffmpeg.exe -Recurse | Select-Object -First 1).FullName
 Copy-Item (Join-Path (Split-Path $Executable) 'vulkan-1.dll') (Split-Path $ffmpeg)
 $media = Join-Path $results 'local video 日本語.mkv'
-& $ffmpeg -y -f lavfi -i 'testsrc2=size=320x180:rate=24' -f lavfi -i 'sine=frequency=440:sample_rate=48000' -t 12 -c:v mpeg4 -c:a pcm_s16le $media
+& $ffmpeg -y -f lavfi -i 'testsrc2=size=320x180:rate=24' -f lavfi -i 'sine=frequency=440:sample_rate=48000' -f lavfi -i 'sine=frequency=880:sample_rate=48000' -map 0:v -map 1:a -map 2:a -t 40 -c:v mpeg4 -c:a pcm_s16le -metadata:s:a:0 'title=English main' -metadata:s:a:0 'language=eng' -metadata:s:a:1 'title=Japanese alternate' -metadata:s:a:1 'language=jpn' $media
 if ($LASTEXITCODE -ne 0) { throw "Fixture generation failed: $LASTEXITCODE" }
+$second = Join-Path $results 'source video.mkv'
+& $ffmpeg -y -f lavfi -i 'color=c=blue:size=320x180:rate=24' -f lavfi -i 'sine=frequency=660:sample_rate=48000' -t 40 -c:v mpeg4 -c:a pcm_s16le -metadata:s:a:0 'title=Source main' $second
+if ($LASTEXITCODE -ne 0) { throw "Second fixture generation failed: $LASTEXITCODE" }
 @'
 1
 00:00:00,000 --> 00:00:11,000
