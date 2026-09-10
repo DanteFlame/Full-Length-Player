@@ -152,7 +152,7 @@ internal sealed class MainForm : Form
             box.SelectedIndexChanged += (_, _) => { change(box.SelectedIndex); Composition.Arrange(); };
             compositionBar.Controls.Add(box);
         }
-        Choice("Canvas", new[] { "16:9", "4:3" }, i => Composition.CanvasAspect = i == 0 ? 16.0 / 9 : 4.0 / 3);
+        Choice("Canvas", new[] { "16:9", "4:3", "16:10" }, i => Composition.CanvasAspect = i switch { 0 => 16.0 / 9, 1 => 4.0 / 3, _ => 16.0 / 10 });
         Choice("Source edge", new[] { "Bottom", "Top" }, i => Composition.TopAnchor = i == 1);
         NumericUpDown Number(string label, decimal value, decimal min, decimal max, Action<double> change)
         {

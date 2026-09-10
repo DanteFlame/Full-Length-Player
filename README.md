@@ -3,14 +3,42 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 6 — composition and fullscreen
+## Current build: milestone 7 — direct streams and Patreon headers
 
-Milestone 5 was confirmed on Gonz's PC: speed controls work and seek synchronization
-is substantially improved. This build adds the intended overlaid viewing layout.
+Gonz confirmed milestone 6 on a 4:3 iPad Pro used as his Windows display through
+Moonlight: crop/pan, source anchoring, fullscreen, synchronization and artistic ASS
+subtitles all work. Fixed canvas previews remain intentional: **16:9, 4:3 and 16:10**
+show the final composition before entering fullscreen.
+
+### Open a stream
+
+Choose **Open URL** on either player and paste a direct HTTP/HTTPS media or `.m3u8`
+URL. For Reaction A, **Patreon Referer preset** starts enabled and supplies
+`https://www.patreon.com`. You can edit the Referer or clear it for other streams.
+Optional HTTP headers use one `Name: value` per line. Commas and backslashes in
+values are preserved. Headers apply to the stream and its playlist/segment requests;
+only use headers intended for the servers serving that stream.
+
+This opens media URLs, not Patreon post pages. It does not extract links, sign in,
+bypass access restrictions or resolve YouTube pages. Signed media URLs may expire;
+use **Open URL** again with a fresh authorized URL when needed. YouTube resolution
+is milestone 8.
+
+URLs and headers are not persisted or written to application logs. They are cleared
+on each replacement load and do not transfer to the other player. Network failures
+show a retry message without the URL or header values. HTTPS certificate checking
+stays enabled. Existing file open controls remain available.
+
+For seeking and locked sync, use an on-demand stream with a known duration and
+seek support. Live/unknown-duration streams are not the shared-timeline target of
+this milestone. Network buffering can delay playback; the existing sync controller
+waits for settling and corrects alignment afterward.
+
+### Composition
 
 Reaction A is the background. **Crop top/bottom %** trims unwanted room space;
 **Reaction zoom** and **Pan X/Y** move the image inside its clipped area. The cropped
-reaction sits at the top of a black **16:9 or 4:3 canvas**.
+reaction sits at the top of a black **16:9, 4:3 or 16:10 canvas**.
 
 Source B sits in front, horizontally centered. Choose **Bottom** or **Top**, then
 resize with **Source %** or drag a blue corner handle. Its display aspect ratio and
@@ -72,7 +100,7 @@ and allow alignment recovery; they no longer disable correction indefinitely.
 These are separate native players, so sample-perfect audio is not guaranteed; real
 media testing still matters. The 80 ms correction threshold is unchanged.
 
-“What Did They Say?”, Patreon/HLS and YouTube handling remain later stages.
+“What Did They Say?” and YouTube resolution remain later stages.
 
 ## Technology
 
@@ -96,12 +124,12 @@ checks in `PlaybackVerification.cs`. Personal mpv configuration/scripts are disa
 2. Extract the artifact and the inner ZIP into a fresh folder. Keep all files together.
 3. Launch **FullLengthPlayer.exe**, choose **Open video**, and select a local MKV/MP4.
 4. Load Source B, align while paused, then **Lock current alignment**.
-5. Crop the reaction's empty top space, then adjust zoom/pan to frame the reactors.
-6. Drag a blue source corner; confirm it stays centered and attached to the chosen edge.
-7. Switch Top/Bottom and 16:9/4:3, resize the window, and try F/F11 and Esc.
-8. Check that both videos, audio and subtitles keep playing through layout changes.
-9. Check Shift+S/D still changes both speeds without unlocking; Shift+J/K/L targets
-   the hovered video and unlocks for manual alignment.
+5. In Reaction A, choose Open URL and paste a currently working direct Patreon HLS
+   URL, leaving the Patreon preset checked. Keep your local show loaded in B.
+6. Check sound/video, pause, seeking, lock/nudges and shared speed with that pair.
+7. Replace A with another URL or a local file; check loading and recovery if a link
+   has expired. For non-Patreon streams, clear the preset unless that Referer is needed.
+8. Try the new fixed 16:10 canvas as well as 4:3/16:9; check the preview matches fullscreen.
 
 Please report stutter, black video, missing sound/subtitles, or one player's controls
 unexpectedly affecting the other. Keep all downloaded files together. The app still
@@ -150,9 +178,20 @@ aspect, source centering/anchors/bounds, reaction crop/pan, foreground hover,
 fullscreen restoration, native handle retention and Shift speed sharing. It also
 captures the actual composed window for inspection. The media fixture uses a Unicode filename.
 Application artifacts upload only after both tests pass; JSON/frame/error evidence
-is uploaded separately.
+is uploaded separately. Milestone 7 adds a loopback HTTP server requiring the Patreon
+Referer and an exact custom header on a redirected HLS master, variant playlist and
+segments. It verifies missing-header rejection, concurrent direct HTTP playback,
+shared HLS seeking/speed, header isolation/reset and recovery after HTTP 403. This
+proves the plumbing; Gonz's current authorized Patreon URL is the real-service test.
 
 CI uses a null audio output because hosted runners have no speakers. It proves audio
 decoding, not audible output. Its synthetic MPEG-4 fixture does not establish AV1/HEVC,
 hardware-decoding or subtitle correctness on every PC; those are the manual tests above.
 Caught startup errors are logged to `%LOCALAPPDATA%/FullLengthPlayer/logs/startup-error.log`.
+
+## UI polish after functionality
+
+The project does not end with functional milestones. A dedicated polish stage will
+make the visible controls attractive and more compact while preserving the fixed
+aspect preview, setup-before-viewing workflow and clean fullscreen composition.
+Gonz's main display is currently a 4:3 iPad Pro streaming Windows through Moonlight.

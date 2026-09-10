@@ -14,6 +14,11 @@ internal sealed class MpvPlayer : IDisposable
         try
         {
             Option("config", "no");
+            Option("terminal", "no");
+            Option("msg-level", "all=no");
+            Option("ytdl", "no");
+            Option("tls-verify", "yes");
+            Option("network-timeout", "20");
             Option("wid", window.ToInt64().ToString(CultureInfo.InvariantCulture));
             Option("vo", "gpu");
             Option("gpu-api", "d3d11");
@@ -33,6 +38,32 @@ internal sealed class MpvPlayer : IDisposable
         if (result < 0) throw new InvalidOperationException($"MPV option {name}={value}: {Error(result)}");
     }
     public void Set(string name, string value) => Check(Native.mpv_set_property_string(handle, name, value));
+    // Pass a native array so commas, backslashes and UTF-8 header values stay literal.
+    public void SetStringList(string name, string[] values)
+    {
+        var strings = new List<IntPtr>();
+        IntPtr nodes = IntPtr.Zero, list = IntPtr.Zero;
+        try
+        {
+            int stride = Marshal.SizeOf<Native.Node>();
+            nodes = Marshal.AllocHGlobal(Math.Max(1, values.Length) * stride);
+            for (int i = 0; i < values.Length; i++)
+            {
+                var text = Marshal.StringToCoTaskMemUTF8(values[i]); strings.Add(text);
+                Marshal.StructureToPtr(new Native.Node { Value = text, Format = 1 }, nodes + i * stride, false);
+            }
+            list = Marshal.AllocHGlobal(Marshal.SizeOf<Native.NodeList>());
+            Marshal.StructureToPtr(new Native.NodeList { Count = values.Length, Values = nodes }, list, false);
+            var root = new Native.Node { Value = list, Format = 7 };
+            Check(Native.mpv_set_property(handle, name, 6, ref root));
+        }
+        finally
+        {
+            foreach (var text in strings) Marshal.FreeCoTaskMem(text);
+            if (nodes != IntPtr.Zero) Marshal.FreeHGlobal(nodes);
+            if (list != IntPtr.Zero) Marshal.FreeHGlobal(list);
+        }
+    }
     public string? Get(string name)
     {
         var value = Native.mpv_get_property_string(handle, name);
@@ -72,6 +103,9 @@ internal sealed class MpvPlayer : IDisposable
 
     private static class Native
     {
+        [StructLayout(LayoutKind.Sequential)] internal struct Node { public IntPtr Value; public int Format; }
+        [StructLayout(LayoutKind.Sequential)] internal struct NodeList { public int Count; public IntPtr Values, Keys; }
+        [DllImport("libmpv-2.dll", CallingConvention = CallingConvention.Cdecl)] internal static extern int mpv_set_property(IntPtr h, [MarshalAs(UnmanagedType.LPUTF8Str)] string n, int format, ref Node data);
         private const string Dll = "libmpv-2.dll";
         [StructLayout(LayoutKind.Sequential)] internal struct Event { public int Id, Error; public ulong UserData; public IntPtr Data; }
         [StructLayout(LayoutKind.Sequential)] internal struct EndFile { public int Reason, Error; }

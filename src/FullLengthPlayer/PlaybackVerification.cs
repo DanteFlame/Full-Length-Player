@@ -220,7 +220,7 @@ internal static class PlaybackVerification
         var composition = form.Composition;
         form.WindowState = FormWindowState.Normal;
         form.Bounds = Rectangle.Inflate(Screen.FromControl(form).WorkingArea, -20, -20);
-        foreach (double aspect in new[] { 16.0 / 9, 4.0 / 3 })
+        foreach (double aspect in new[] { 16.0 / 9, 4.0 / 3, 16.0 / 10 })
         foreach (bool topAnchor in new[] { false, true })
         foreach (double fraction in new[] { 0.25, 0.7, 1.0 })
         {
@@ -270,7 +270,8 @@ internal static class PlaybackVerification
         File.Delete(preferencesFile);
         Assert(!form.HandleShortcut(Keys.H, pointerA), "H must remain reserved for the later replay feature.");
         Assert(a.Number("volume") == 35 && b.Number("volume") == 70, "Speed shortcuts changed volumes.");
-        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 6, composition = true, fullscreen = true, sharedShiftSpeed = true, nativeSurfaceRetention = true, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
+        await NetworkVerification.Run(form, media);
+        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 7, hlsPlayback = true, httpHeaderIsolation = true, hlsSharedSeek = true, httpFailureRecovery = true, canvas16x10 = true, composition = true, fullscreen = true, sharedShiftSpeed = true, nativeSurfaceRetention = true, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
         form.Close();
     }
 }

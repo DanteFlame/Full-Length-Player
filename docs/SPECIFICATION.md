@@ -82,8 +82,8 @@ Do not proceed past a failed or unconfirmed foundation.
 | 3 (confirmed) | Shared transport | Master play/pause and seeking affect both |
 | 4 (confirmed, seek/resume refinement in 5) | Offset and drift correction | Offset maintained through seeking; ±0.1s nudging |
 | 5 (confirmed) | Shared speed, independent audio/subtitles | Speed changes preserve alignment; independent track/volume controls |
-| 6 (current) | Composition | Reaction crop/pan and centered top/bottom source resizing |
-| 7 | Patreon/HLS and headers | Authorized real stream playback with correct Referer |
+| 6 (confirmed) | Composition | Reaction crop/pan and centered top/bottom source resizing |
+| 7 (current) | Patreon/HLS and headers | Authorized real stream playback with correct Referer |
 | 8 | YouTube resolution | Unlisted reaction URL playback |
 | 9 | Audio-assisted automatic alignment | Confidence and accuracy against real reaction recordings |
 | 10 | Reaction conveniences | What Did They Say restores exact state at trigger time; persistence and remaining conveniences |
@@ -206,3 +206,25 @@ Offer 16:9 and 4:3 canvases. F/F11 fullscreen hides controls, Esc restores the p
 window. Retain native surface handles and sync state throughout layout changes.
 Layout persists within the session only. H remains reserved. User playback and
 composition confirmation gates milestone 7.
+
+
+## Milestone 7 decisions and milestone 6 confirmation
+
+Gonz confirmed all composition controls, fixed aspect previews, fullscreen and sync.
+Artistic ASS subtitle rendering scales correctly through MPV. His Windows display
+is currently a 4:3 iPad Pro via Moonlight (no physical monitor). Preserve fixed canvas
+aspect ratios rather than a free-form window-dependent composition. Add 16:10 to
+16:9 and 4:3. The preview should represent the eventual fullscreen composition.
+
+M7 adds direct HTTP/HTTPS media/HLS URL loading on either player, an editable
+Patreon Referer preset (default https://www.patreon.com for A) and additional header
+fields. Reset per-load network options on replacements including local files; never
+persist or log URLs/headers. Keep failures recoverable and generic. Direct media URLs
+are required; Patreon page extraction/login and YouTube resolution are not M7.
+On-demand seekable streams with known durations are required for shared timelines.
+Validate headers on playlists and segments with a local server; a currently valid
+user-authorized Patreon stream remains the real-service acceptance test.
+
+After the functionality roadmap, explicitly schedule a UI polish stage: attractive,
+compact controls; retain setup preview and controls disappearing in fullscreen.
+Functional completion alone is not the end of this project.

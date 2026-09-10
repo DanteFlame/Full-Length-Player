@@ -17,6 +17,9 @@ if ($LASTEXITCODE -ne 0) { throw "Fixture generation failed: $LASTEXITCODE" }
 $second = Join-Path $results 'source video.mkv'
 & $ffmpeg -y -f lavfi -i 'color=c=blue:size=320x180:rate=24' -f lavfi -i 'sine=frequency=660:sample_rate=48000' -t 40 -c:v mpeg4 -c:a pcm_s16le -metadata:s:a:0 'title=Source main' $second
 if ($LASTEXITCODE -ne 0) { throw "Second fixture generation failed: $LASTEXITCODE" }
+New-Item -ItemType Directory -Force "$results/hls" | Out-Null
+& $ffmpeg -y -i $media -map 0:v -map 0:a:0 -c:v mpeg2video -g 24 -c:a mp2 -f hls -hls_time 2 -hls_playlist_type vod -hls_segment_filename "$results/hls/seg%02d.ts" "$results/hls/index.m3u8"
+if ($LASTEXITCODE -ne 0) { throw "HLS fixture generation failed: $LASTEXITCODE" }
 @'
 1
 00:00:00,000 --> 00:00:11,000
@@ -25,7 +28,7 @@ Full-Length Player subtitle test
 $report = Join-Path $results 'playback.json'
 $p = Start-Process $Executable -ArgumentList @('--verify-playback', "`"$media`"", "`"$report`"") -WorkingDirectory $env:TEMP -PassThru
 try {
-    if (!$p.WaitForExit(180000)) { throw 'Playback test timed out.' }
+    if (!$p.WaitForExit(240000)) { throw 'Playback test timed out.' }
     if ($p.ExitCode -ne 0 -or !(Test-Path $report)) {
         if (Test-Path "$report.error.txt") { Get-Content "$report.error.txt" }
         throw "Playback test failed: $($p.ExitCode)"

@@ -14,6 +14,8 @@ internal sealed class PlayerPane : UserControl
     private readonly TrackBar volume = new() { Minimum = 0, Maximum = 100, Value = 100, Width = 120, Height = 28, TickStyle = TickStyle.None };
     private string? playbackError;
     private bool dragging;
+    private bool network;
+    internal string? PlaybackError => playbackError;
     private string fileName = "No video loaded";
     internal MpvPlayer? Player { get; private set; }
     internal string Role { get; }
@@ -37,6 +39,7 @@ internal sealed class PlayerPane : UserControl
             transport.Items.Add(button);
         }
         Button("Open video", Open);
+        Button("Open URL", OpenUrl);
         Button("Play / Pause", TogglePause);
         Button("−5 s", () => Seek(-5));
         Button("+5 s", () => Seek(5));
@@ -91,11 +94,38 @@ internal sealed class PlayerPane : UserControl
     {
         if (Player == null) throw new InvalidOperationException("MPV is unavailable. Restart with all downloaded files together.");
         if (!File.Exists(path)) throw new FileNotFoundException("Local video not found.", path);
-        ManualTransport?.Invoke(); MediaReplaced?.Invoke();
-        playbackError = null;
+        PrepareLoad(false, "No video loaded");
         fileName = Path.GetFileName(path);
         Player.Command("loadfile", Path.GetFullPath(path), "replace");
         Player.Set("pause", "no");
+        ActivatePane();
+    }
+    internal void OpenUrl()
+    {
+        using var dialog = new NetworkSourceDialog(Role == "Reaction A");
+        if (dialog.ShowDialog(this) == DialogResult.OK && dialog.Source != null) LoadNetwork(dialog.Source);
+    }
+    private void PrepareLoad(bool remote, string title)
+    {
+        if (Player == null) throw new InvalidOperationException("MPV is unavailable.");
+        ManualTransport?.Invoke(); MediaReplaced?.Invoke();
+        Player.Command("stop");
+        Player.PollError(); // Discard failures from the previous load.
+        Player.Set("referrer", "");
+        Player.SetStringList("http-header-fields", Array.Empty<string>());
+        network = remote; playbackError = null; fileName = title;
+    }
+    internal void LoadNetwork(NetworkSource source)
+    {
+        PrepareLoad(true, "Network stream");
+        try
+        {
+            Player!.Set("referrer", source.Referer);
+            Player.SetStringList("http-header-fields", source.Headers);
+            Player.Command("loadfile", source.Url, "replace");
+            Player.Set("pause", "no");
+        }
+        catch { throw new InvalidOperationException("Could not open stream. Check the URL and HTTP settings."); }
         ActivatePane();
     }
     internal void TogglePause() { ManualTransport?.Invoke(); Player?.Command("cycle", "pause"); }
@@ -143,12 +173,16 @@ internal sealed class PlayerPane : UserControl
     internal void UpdatePlayback()
     {
         if (Player == null) return;
-        playbackError = Player.PollError() ?? playbackError;
+        var error = Player.PollError();
+        if (error != null) playbackError = network
+            ? "Stream unavailable. Check the direct URL, expiry/access and HTTP headers; open a fresh URL to retry."
+            : error;
         double time = Player.Number("time-pos"), duration = Player.Number("duration");
         if (!dragging) timeline.Value = duration > 0 ? (int)Math.Clamp(time / duration * 10000, 0, 10000) : 0;
         status.Text = playbackError != null ? $"Could not play: {playbackError}" : duration > 0
             ? $"{(Player.Get("pause") == "yes" ? "Paused" : "Playing")}  {TimeSpan.FromSeconds(time):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(duration):hh\\:mm\\:ss}  • {Player.Number("speed"):0.##}×"
-            : "Open a local video";
+            : network ? (playbackError != null ? playbackError : Player.Get("idle-active") == "yes" ? "Stream ended or unavailable — open a fresh URL to retry" : "Opening stream…") : "Open a local video";
+        if (network && playbackError == null && Player.Get("paused-for-cache") == "yes") status.Text = "Buffering stream…";
     }
     internal void Shutdown() { Player?.Dispose(); Player = null; }
     protected override void Dispose(bool disposing)
