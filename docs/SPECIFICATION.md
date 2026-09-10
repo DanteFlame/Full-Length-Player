@@ -250,3 +250,18 @@ Never log extractor output or signed URLs. Dependency updates are explicit build
 Live and sign-in-required videos remain outside this milestone's acceptance scope.
 Local extraction/native split-stream tests are required; a real public/unlisted
 YouTube link on Gonz's PC is the final gate before automatic alignment work.
+
+
+## Milestone 8 feedback: repair before progressing
+
+Non-Patreon direct CDN playback and 0.05-second rounding/nudges are confirmed.
+Every attempted public/unlisted YouTube URL fails at the resolver stage on Gonz's
+PC. Add redacted error diagnostics and investigate live extraction; do not advance.
+
+Reaction A's complete timeline is authoritative even while locked. B = A + offset
+within B's duration; otherwise hold B paused at zero or its final frame while A
+plays preamble or discussion. Rejoin B automatically when entering its interval,
+and preserve play/pause intent through shared seeks and speed changes. This
+supersedes the earlier shared-range clamping behavior for locked playback.
+Keep B visible for now; hiding it outside its interval is deferred.
+Default both crop top and crop bottom to zero; Gonz sets his own framing.

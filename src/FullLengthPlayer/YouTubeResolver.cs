@@ -32,7 +32,7 @@ internal static class YouTubeResolver
             UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
             StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8, WorkingDirectory = directory
         };
-        foreach (string arg in new[] { "--ignore-config", "--no-plugin-dirs", "--no-cache-dir", "--no-playlist", "--skip-download", "--dump-single-json", "--no-warnings", "--no-progress", "--socket-timeout", "15", "--retries", "1", "--extractor-retries", "1", "--js-runtimes", "deno:" + Path.Combine(directory, "deno.exe"), "--format", "bestvideo+bestaudio/best", "--", url }) info.ArgumentList.Add(arg);
+        foreach (string arg in new[] { "--ignore-config", "--no-plugin-dirs", "--no-cache-dir", "--no-playlist", "--skip-download", "--dump-single-json", "--no-progress", "--socket-timeout", "15", "--retries", "1", "--extractor-retries", "1", "--js-runtimes", "deno:" + Path.Combine(directory, "deno.exe"), "--format", "bestvideo+bestaudio/best", "--", url }) info.ArgumentList.Add(arg);
         info.Environment["DENO_NO_UPDATE_CHECK"] = "1";
         return info;
     }
@@ -44,6 +44,8 @@ internal static class YouTubeResolver
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
         timeout.CancelAfter(TimeSpan.FromSeconds(90));
         using var process = new Process { StartInfo = start };
+        string details = "";
+        string input = start.ArgumentList.LastOrDefault() ?? "";
         try
         {
             cancellation.ThrowIfCancellationRequested();
@@ -63,13 +65,14 @@ internal static class YouTubeResolver
             var stdout = Read(process.StandardOutput, 16 * 1024 * 1024);
             var stderr = Read(process.StandardError, 256 * 1024);
             await Task.WhenAll(stdout, stderr, process.WaitForExitAsync(timeout.Token));
-            if (process.ExitCode != 0) throw new InvalidOperationException();
+            details = await stderr;
+            if (process.ExitCode != 0) throw new InvalidOperationException("Extractor exit code: " + process.ExitCode);
             return await stdout;
         }
         catch (Exception) when (cancellation.IsCancellationRequested) { throw new OperationCanceledException(cancellation); }
-        catch (Exception)
+        catch (Exception error)
         {
-            throw new InvalidOperationException("YouTube could not be opened. Check that the video is available without signing in, then retry. YouTube may temporarily restrict requests, or the bundled resolver may need an update.");
+            throw new InvalidOperationException(ResolverDiagnostics.Save(error.GetType().Name + ": " + error.Message + "\n" + details, input, timeout.IsCancellationRequested ? "timeout" : "extractor"));
         }
     }
     internal static ResolvedVideo Parse(string json)

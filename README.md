@@ -226,3 +226,23 @@ HTTP media endpoint, YouTube URL normalization, native split video/audio playbac
 shared seeking/speed, cancellation/replacement, external-audio reset and offset
 rounding/nudges on positive and negative values. These deterministic checks do not
 establish live YouTube availability; Gonz's public/unlisted link test is the acceptance gate.
+
+
+## Milestone 8 repair build
+
+Gonz confirmed non-Patreon CDN playback and all 0.05-second controls. YouTube fails
+on his PC, so milestone 8 remains unconfirmed. Resolver failures now write a redacted
+`%LOCALAPPDATA%/FullLengthPlayer/logs/youtube-error.log` including the exit/error stage
+and diagnostic text. URLs, video IDs and credential-related lines are removed. The
+previous build discarded stderr; it has no detailed retrospective YouTube log.
+
+Locked transport now spans the full reaction timeline. Before B's mapped start,
+B stays paused at zero; after B ends, it stays on its last frame while A continues.
+Crossing or seeking back into the shared portion rejoins B at the stored offset.
+Source visibility stays unchanged for now. Both crop defaults are zero.
+
+Windows checks include automatic boundary crossing, seeking into/out of preamble
+and discussion, pause/speed behavior while B is held, and diagnostic redaction.
+A separate live public YouTube extraction probe records service behavior from CI;
+CI may face restrictions different from the user's PC. Real user confirmation is
+still required before moving beyond milestone 8.

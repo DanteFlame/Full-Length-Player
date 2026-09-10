@@ -30,6 +30,8 @@ jobs:
         run: ./scripts/smoke-window.ps1 -Executable './publish/launch test/FullLengthPlayer.exe'
       - name: Verify composition, playback and protected HLS
         run: ./scripts/smoke-playback.ps1 -Executable './publish/launch test/FullLengthPlayer.exe'
+      - name: Probe live public YouTube extraction
+        run: ./scripts/probe-youtube.ps1 -Executable './publish/launch test/FullLengthPlayer.exe'
       - name: Upload verified application
         uses: actions/upload-artifact@v4
         with:

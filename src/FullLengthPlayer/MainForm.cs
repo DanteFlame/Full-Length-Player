@@ -163,7 +163,7 @@ internal sealed class MainForm : Form
         }
         var size = Number("Source %", 70, 15, 100, v => Composition.SourceFraction = v);
         Composition.ResizedSource += () => size.Value = Math.Clamp((decimal)Math.Round(Composition.SourceFraction * 100), 15, 100);
-        Number("Crop top %", 20, 0, 45, v => Composition.CropTop = v);
+        Number("Crop top %", 0, 0, 45, v => Composition.CropTop = v);
         Number("Crop bottom %", 0, 0, 45, v => Composition.CropBottom = v);
         Number("Reaction zoom %", 100, 50, 200, v => Composition.Zoom = v);
         Number("Pan X %", 0, -100, 100, v => Composition.PanX = v);
@@ -218,7 +218,7 @@ internal sealed class MainForm : Form
         }
         if (position == null) { masterStatus.Text = "Load both videos to use shared controls"; masterTimeline.Value = 0; return; }
         if (!masterDragging) masterTimeline.Value = (int)Math.Clamp(position.ATime / position.ADuration * 10000, 0, 10000);
-        masterStatus.Text = $"Shared timeline (Reaction A): {TimeSpan.FromSeconds(position.ATime):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(position.ADuration):hh\\:mm\\:ss} • Seeks move both equally, stopping at either file’s boundary";
+        masterStatus.Text = $"Shared timeline (Reaction A): {TimeSpan.FromSeconds(position.ATime):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(position.ADuration):hh\\:mm\\:ss} • Locked: full reaction timeline; source waits at its first/last frame";
     }
     private void SelectPane(PlayerPane pane)
     {

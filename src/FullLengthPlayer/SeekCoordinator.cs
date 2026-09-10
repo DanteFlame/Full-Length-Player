@@ -6,7 +6,7 @@ namespace FullLengthPlayer;
 internal sealed class SeekCoordinator
 {
     private sealed record Pending(MpvPlayer A, MpvPlayer B, double ATarget, double BTarget,
-        bool PlayA, bool PlayB, long Started);
+        bool PlayA, bool PlayB, bool FollowReaction, bool HoldSource, long Started);
     private Pending? pending;
     private int readyTicks;
     internal bool Waiting => pending != null;
@@ -16,13 +16,14 @@ internal sealed class SeekCoordinator
     internal void TogglePause()
     {
         if (pending is not { } p) return;
-        bool play = !p.PlayA && !p.PlayB;
-        pending = p with { PlayA = play, PlayB = play };
+        bool play = p.FollowReaction ? !p.PlayA : !p.PlayA && !p.PlayB;
+        pending = p with { PlayA = play, PlayB = play && !p.HoldSource };
     }
-    internal void Begin(MasterTransport.Position p, double aTarget, double bTarget, bool seekA = true)
+    internal void Begin(MasterTransport.Position p, double aTarget, double bTarget, bool seekA = true, bool followReaction = false, bool holdSource = false)
     {
         bool playA = pending?.PlayA ?? p.A.Get("pause") != "yes";
         bool playB = pending?.PlayB ?? p.B.Get("pause") != "yes";
+        if (followReaction) playB = playA && !holdSource;
         Cancel();
         p.A.Set("pause", "yes"); p.B.Set("pause", "yes");
         if (!seekA)
@@ -33,7 +34,7 @@ internal sealed class SeekCoordinator
         // If a command fails, leave both safely paused instead of resuming half a seek.
         if (seekA) p.A.Command("seek", aTarget.ToString(CultureInfo.InvariantCulture), "absolute+exact");
         p.B.Command("seek", bTarget.ToString(CultureInfo.InvariantCulture), "absolute+exact");
-        pending = new Pending(p.A, p.B, aTarget, bTarget, playA, playB, Environment.TickCount64);
+        pending = new Pending(p.A, p.B, aTarget, bTarget, playA, playB, followReaction, holdSource, Environment.TickCount64);
     }
     internal string? Tick()
     {
@@ -52,9 +53,9 @@ internal sealed class SeekCoordinator
         if (++readyTicks < 2) return "Both videos settling";
         Cancel();
         // At an endpoint keep both paused, rather than immediately restarting an EOF player.
-        bool ended = p.A.Get("eof-reached") == "yes" || p.B.Get("eof-reached") == "yes";
+        bool ended = p.A.Get("eof-reached") == "yes" || (!p.FollowReaction && p.B.Get("eof-reached") == "yes");
         p.A.Set("pause", !ended && p.PlayA ? "no" : "yes");
-        p.B.Set("pause", !ended && p.PlayB ? "no" : "yes");
-        return ended ? "Shared range ended — seek back to continue" : "Seek complete";
+        p.B.Set("pause", !ended && !p.HoldSource && p.B.Get("eof-reached") != "yes" && p.PlayB ? "no" : "yes");
+        return ended ? "Reaction ended — seek back to continue" : "Seek complete";
     }
 }

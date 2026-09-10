@@ -19,6 +19,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     private readonly SeekCoordinator seeks = new();
     internal bool SeekingTogether => seeks.Waiting;
     private long nextCorrection;
+    private bool sourceHeld;
     internal void SetSpeed(double speed)
     {
         if (!double.IsFinite(speed) || speed < SpeedControl.Minimum || speed > SpeedControl.Maximum) throw new ArgumentOutOfRangeException(nameof(speed));
@@ -33,7 +34,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     private void Settle() => nextCorrection = Environment.TickCount64 + 2000;
     internal void Unlock(string reason = "Unlocked — align videos, then lock")
     {
-        seeks.Cancel(); Locked = false; Drift = null; SyncStatus = reason;
+        seeks.Cancel(); sourceHeld = false; Locked = false; Drift = null; SyncStatus = reason;
     }
     internal void CaptureAlignment()
     {
@@ -56,12 +57,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         if (Math.Max(0, -seconds) >= Math.Min(p.ADuration, p.BDuration - seconds))
             throw new InvalidOperationException("That offset leaves no shared playable range.");
         Offset = seconds; Locked = true;
-        if (p.ATime + Offset >= 0 && p.ATime + Offset <= p.BDuration)
-        {
-            seeks.Begin(p, p.ATime, p.ATime + Offset, seekA: false);
-            SyncStatus = "Locked — applying offset"; Settle();
-        }
-        else SeekLocked(p, p.ATime);
+        SeekLocked(p, p.ATime);
     }
     internal void Nudge(double seconds) => SetOffset((Locked ? Offset : (Snapshot() is { } p ? p.BTime - p.ATime : 0)) + seconds);
     private static bool Busy(Position p) => p.A.Get("seeking") == "yes" || p.B.Get("seeking") == "yes"
@@ -76,20 +72,33 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         if (!Locked) return;
         var p = Snapshot();
         if (p == null) { SyncStatus = "Waiting for media"; return; }
-        Drift = p.BTime - (p.ATime + Offset);
-        if (Busy(p)) { SyncStatus = "Waiting for playback to settle"; Settle(); return; }
-        if (Environment.TickCount64 < nextCorrection) return;
         double target = p.ATime + Offset;
-        if (p.A.Get("eof-reached") == "yes" || p.B.Get("eof-reached") == "yes" || target < 0 || target > p.BDuration)
+        bool before = target < 0;
+        bool after = target >= p.BDuration || (p.B.Get("eof-reached") == "yes" && target >= p.BDuration - 0.12);
+        if (before || after)
+        {
+            sourceHeld = true; Drift = null;
+            p.B.Set("pause", "yes");
+            double edge = before ? 0 : p.BDuration;
+            if (p.B.Get("seeking") != "yes" && Math.Abs(p.BTime - edge) > 0.12)
+                p.B.Command("seek", edge.ToString(CultureInfo.InvariantCulture), "absolute+exact");
+            SyncStatus = before ? "Locked — source waiting at start" : "Locked — source ended; reaction continues";
+            return;
+        }
+        if (sourceHeld)
+        {
+            sourceHeld = false;
+            SeekLocked(p, p.ATime); // Rejoin at the stored offset and A's playback state.
+            return;
+        }
+        Drift = p.BTime - target;
+        if (Busy(p)) { SyncStatus = "Waiting for playback to settle"; Settle(); return; }
+        if (p.A.Get("eof-reached") == "yes")
         {
             p.A.Set("pause", "yes"); p.B.Set("pause", "yes");
-            // Restore the pair to its shared boundary if A ran past it between checks.
-            // Do not re-seek an already settled final frame every timer interval.
-            double boundaryA = Math.Clamp(p.ATime, Math.Max(0, -Offset), Math.Min(p.ADuration, p.BDuration - Offset));
-            if (Math.Abs(p.ATime - boundaryA) > Tolerance || Math.Abs(p.BTime - boundaryA - Offset) > Tolerance)
-                SeekLocked(p, boundaryA);
-            SyncStatus = "Shared range ended — seek back to continue"; Settle(); return;
+            SyncStatus = "Reaction ended — seek back to continue"; return;
         }
+        if (Environment.TickCount64 < nextCorrection) return;
         if (p.A.Get("pause") != p.B.Get("pause"))
         {
             // Manual controls unlock first. A mismatch while locked is a native
@@ -102,7 +111,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         {
             try
             {
-                seeks.Begin(p, p.ATime, target, seekA: false);
+                seeks.Begin(p, p.ATime, target, seekA: false, followReaction: true);
                 CorrectionCount++; SyncStatus = "Corrected source drift";
             }
             catch (Exception e) { Unlock("Correction stopped: " + e.Message); }
@@ -111,10 +120,10 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     }
     private void SeekLocked(Position p, double reactionTime)
     {
-        double low = Math.Max(0, -Offset), high = Math.Min(p.ADuration, p.BDuration - Offset);
-        if (high < low) { Unlock("No shared range — realign the videos"); return; }
-        double target = Math.Clamp(reactionTime, low, high);
-        seeks.Begin(p, target, target + Offset);
+        double target = Math.Clamp(reactionTime, 0, p.ADuration);
+        double sourceTarget = target + Offset;
+        sourceHeld = sourceTarget < 0 || sourceTarget >= p.BDuration;
+        seeks.Begin(p, target, Math.Clamp(sourceTarget, 0, p.BDuration), followReaction: true, holdSource: sourceHeld);
         SyncStatus = "Locked — settling after seek"; Settle();
     }
     internal sealed record Position(MpvPlayer A, MpvPlayer B, double ATime, double BTime, double ADuration, double BDuration);
@@ -133,8 +142,10 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         if (seeks.Waiting) { seeks.TogglePause(); return; }
         var p = Snapshot(); if (p == null) return;
         // Mixed states converge to paused; pressing again starts both.
-        string state = p.A.Get("pause") != "yes" || p.B.Get("pause") != "yes" ? "yes" : "no";
-        p.A.Set("pause", state); p.B.Set("pause", state);
+        string state = (Locked ? p.A.Get("pause") != "yes" : p.A.Get("pause") != "yes" || p.B.Get("pause") != "yes") ? "yes" : "no";
+        p.A.Set("pause", state);
+        bool hold = Locked && (p.ATime + Offset < 0 || p.ATime + Offset >= p.BDuration);
+        p.B.Set("pause", hold ? "yes" : state);
         Settle();
     }
     internal void Jump(double seconds)

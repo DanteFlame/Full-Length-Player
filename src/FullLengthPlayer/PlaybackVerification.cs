@@ -129,7 +129,7 @@ internal static class PlaybackVerification
         await Until(() => Math.Abs(b.Number("time-pos") - a.Number("time-pos") - fixedOffset) < 0.08, "Negative nudge failed.");
         form.Master.SetOffset(-3);
         form.Master.SeekReaction(0);
-        await Until(() => Math.Abs(a.Number("time-pos") - 3) < 0.1 && b.Number("time-pos") < 0.1, "Negative-offset start boundary failed.");
+        await Until(() => a.Number("time-pos") < 0.1 && b.Number("time-pos") < 0.1, "Full reaction start must remain accessible.");
         form.Master.SeekReaction(100);
         await Until(() => a.Number("time-pos") > 39.7 && Math.Abs(b.Number("time-pos") - 37) < 0.1, "Negative-offset end boundary failed.");
         form.Master.SeekReaction(10);
@@ -154,7 +154,7 @@ internal static class PlaybackVerification
         Assert(form.Master.Offset == 4 && a.Number("volume") == 35 && b.Number("volume") == 70, "Correction changed offset or volume.");
         form.Master.TogglePause();
         a.Command("seek", "38", "absolute+exact"); b.Command("seek", "39", "absolute+exact");
-        await Until(() => Math.Abs(a.Number("time-pos") - 36) < 0.1 && b.Number("time-pos") > 39.7 && a.Get("pause") == "yes" && b.Get("pause") == "yes", "Correction must restore an overshot shared endpoint.");
+        await Until(() => Math.Abs(a.Number("time-pos") - 38) < 0.1 && b.Number("time-pos") > 39.7 && a.Get("pause") == "yes" && b.Get("pause") == "yes", "Source boundary must not pull reaction backward.");
         form.Reaction.LoadVideo(media);
         Assert(!form.Master.Locked, "Replacing media must invalidate the lock.");
         // Milestone 5: exercise the real keyboard dispatcher and native speed properties.
@@ -272,7 +272,8 @@ internal static class PlaybackVerification
         Assert(a.Number("volume") == 35 && b.Number("volume") == 70, "Speed shortcuts changed volumes.");
         await NetworkVerification.Run(form, media);
         await YouTubeVerification.Run(form, media);
-        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 8, youtubeResolver = true, separateYouTubeAudio = true, offsetGrid005 = true, hlsPlayback = true, httpHeaderIsolation = true, hlsSharedSeek = true, httpFailureRecovery = true, canvas16x10 = true, composition = true, fullscreen = true, sharedShiftSpeed = true, nativeSurfaceRetention = true, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
+        await BoundaryVerification.Run(form);
+        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 8, reactionPreambleAndDiscussion = true, youtubeDiagnostics = true, youtubeResolver = true, separateYouTubeAudio = true, offsetGrid005 = true, hlsPlayback = true, httpHeaderIsolation = true, hlsSharedSeek = true, httpFailureRecovery = true, canvas16x10 = true, composition = true, fullscreen = true, sharedShiftSpeed = true, nativeSurfaceRetention = true, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
         form.Close();
     }
 }

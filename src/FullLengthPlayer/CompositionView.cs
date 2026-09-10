@@ -14,7 +14,7 @@ internal sealed class CompositionView : Panel
     internal double CanvasAspect { get; set; } = 16.0 / 9;
     internal double SourceFraction { get; set; } = 0.7;
     internal bool TopAnchor { get; set; }
-    internal double CropTop { get; set; } = 0.2;
+    internal double CropTop { get; set; }
     internal double CropBottom { get; set; }
     internal double Zoom { get; set; } = 1;
     internal double PanX { get; set; }
