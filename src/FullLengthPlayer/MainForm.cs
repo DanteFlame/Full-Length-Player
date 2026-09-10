@@ -23,7 +23,7 @@ internal sealed class MainForm : Form
     private readonly Label masterStatus = new() { Dock = DockStyle.Top, Height = 24, ForeColor = Color.White, AutoEllipsis = true };
     private bool masterDragging;
     private readonly FlowLayoutPanel syncBar = new() { Dock = DockStyle.Top, Height = 36, AutoScroll = true, WrapContents = false, BackColor = SystemColors.Control };
-    private readonly NumericUpDown offsetInput = new() { DecimalPlaces = 3, Increment = 0.1m, Minimum = -604800, Maximum = 604800, Width = 110 };
+    private readonly NumericUpDown offsetInput = new() { DecimalPlaces = 2, Increment = 0.05m, Minimum = -604800, Maximum = 604800, Width = 110 };
     private readonly Label syncStatus = new() { AutoSize = true, Padding = new Padding(0, 6, 0, 0) };
     private double displayedOffset = double.NaN;
     public MainForm()
@@ -56,8 +56,8 @@ internal sealed class MainForm : Form
         syncBar.Controls.Add(offsetInput);
         // Apply explicit edits only; timer updates must never change the stored offset.
         SyncButton("Apply offset", () => Master.SetOffset((double)offsetInput.Value));
-        SyncButton("−0.1 s", () => Master.Nudge(-0.1));
-        SyncButton("+0.1 s", () => Master.Nudge(0.1));
+        SyncButton("−0.05 s", () => Master.Nudge(-MasterTransport.OffsetStep));
+        SyncButton("+0.05 s", () => Master.Nudge(MasterTransport.OffsetStep));
         syncBar.Controls.Add(syncStatus);
         masterBar.Items.Add(new ToolStripLabel("BOTH PLAYERS"));
         void MasterButton(string text, Action action)
@@ -209,7 +209,7 @@ internal sealed class MainForm : Form
         double aSpeed = Reaction.Player?.Number("speed") ?? 1, bSpeed = Source.Player?.Number("speed") ?? 1;
         speedMenu.Text = Math.Abs(aSpeed - bSpeed) < 0.001 ? $"Speed: {aSpeed:0.##}×" : $"Speed A/B: {aSpeed:0.##}× / {bSpeed:0.##}×";
         masterBar.Enabled = masterTimeline.Enabled = syncBar.Enabled = position != null;
-        syncStatus.Text = $"{Master.SyncStatus}" + (Master.Locked ? $" • Fixed offset {Master.Offset:+0.000;-0.000;0.000} s • Drift {Master.Drift.GetValueOrDefault():+0.000;-0.000;0.000} s" : "");
+        syncStatus.Text = $"{Master.SyncStatus}" + (Master.Locked ? $" • Fixed offset {Master.Offset:+0.00;-0.00;0.00} s • Drift {Master.Drift.GetValueOrDefault():+0.000;-0.000;0.000} s" : "");
         if (displayedOffset != Master.Offset)
         {
             displayedOffset = Master.Offset;
@@ -269,8 +269,8 @@ internal sealed class MainForm : Form
             case Keys.Right: if (shift) target.Seek(5); else Master.Jump(5); break;
             case Keys.K:
             case Keys.Space: if (shift) target.TogglePause(); else Master.TogglePause(); break;
-            case Keys.Oemcomma when !shift: Master.Nudge(-0.1); break;
-            case Keys.OemPeriod when !shift: Master.Nudge(0.1); break;
+            case Keys.Oemcomma when !shift: Master.Nudge(-MasterTransport.OffsetStep); break;
+            case Keys.OemPeriod when !shift: Master.Nudge(MasterTransport.OffsetStep); break;
             default: return false;
         }
         return true;

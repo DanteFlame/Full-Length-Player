@@ -50,14 +50,25 @@ internal sealed class NetworkSourceDialog : Form
         var open = new Button { Text = "Open stream", Left = 390, Top = 320, Width = 115 };
         var cancel = new Button { Text = "Cancel", Left = 515, Top = 320, Width = 85, DialogResult = DialogResult.Cancel };
         void LabelAt(string text, int top) => Controls.Add(new Label { Text = text, Left = 16, Top = top, Width = 590, Height = 24 });
-        LabelAt("Direct media / .m3u8 URL (not a Patreon post or YouTube page)", 18);
+        LabelAt("YouTube video link or direct media / .m3u8 URL (not a Patreon post)", 18);
         LabelAt("Referer (editable; leave blank for streams that do not need it)", 106);
         LabelAt("Optional HTTP headers — one Name: value per line", 160);
         LabelAt("URLs and headers are used for this load only; they are not saved to disk.", 285);
         Controls.AddRange(new Control[] { url, patreon, referer, headers, open, cancel });
+        url.TextChanged += (_, _) =>
+        {
+            bool youtube = YouTubeResolver.IsYouTube(url.Text);
+            patreon.Enabled = referer.Enabled = headers.Enabled = !youtube;
+            open.Text = youtube ? "Open YouTube" : "Open stream";
+        };
         open.Click += (_, _) =>
         {
-            try { Source = NetworkSource.Parse(url.Text, referer.Text, headers.Text); DialogResult = DialogResult.OK; }
+            try
+            {
+                bool youtube = YouTubeResolver.IsYouTube(url.Text);
+                Source = NetworkSource.Parse(youtube ? YouTubeResolver.CanonicalUrl(url.Text) : url.Text, youtube ? "" : referer.Text, youtube ? "" : headers.Text);
+                DialogResult = DialogResult.OK;
+            }
             catch (ArgumentException e) { MessageBox.Show(this, e.Message, "Stream settings"); }
         };
         AcceptButton = open; CancelButton = cancel;

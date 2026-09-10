@@ -3,12 +3,40 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 7 — direct streams and Patreon headers
+## Current build: milestone 8 — YouTube links and 0.05-second offsets
 
-Gonz confirmed milestone 6 on a 4:3 iPad Pro used as his Windows display through
-Moonlight: crop/pan, source anchoring, fullscreen, synchronization and artistic ASS
-subtitles all work. Fixed canvas previews remain intentional: **16:9, 4:3 and 16:10**
-show the final composition before entering fullscreen.
+Gonz confirmed Patreon HLS playback with his actual stream: immediate loading,
+seeking, synchronization with local media and speed controls all work. He also
+confirmed the fixed 16:10 canvas on a MacBook Air through Moonlight.
+
+### Open YouTube
+
+Use **Open URL** on either player and paste a public or unlisted YouTube video link.
+Watch, youtu.be, Shorts, embed and individual /live links are recognized. Only that
+video is opened; playlist and timestamp parameters are stripped. Playback starts
+at the beginning so you can establish the reaction/source alignment yourself.
+The Patreon/header fields are disabled for recognized YouTube links.
+
+The bundled **yt-dlp + Deno** resolver retrieves the streams, then MPV plays the
+selected video and audio, including separately served high-quality tracks. Existing
+playback continues during lookup. **Cancel YouTube**, opening another source or
+closing the app cancels it; a stale lookup cannot replace newer media. Lookups time
+out after 90 seconds. URLs, signed stream metadata and extractor diagnostics are not
+saved to application logs; browser cookies and personal extractor configs are not used.
+
+This milestone targets public/unlisted on-demand videos viewable without signing in.
+Private, sign-in/age-gated videos and live broadcasts are not supported here. YouTube
+can reject automated requests or change its extraction requirements. On a failure,
+retry the original link; a later build may need updated resolver dependencies. No
+silent self-updates or extra installation are required.
+
+### Offset precision
+
+**Lock current alignment** rounds B−A to the nearest **0.05 seconds** and applies the
+rounded alignment. Typed offsets also snap to that grid. Buttons, comma/period and
+numeric arrows all adjust by **0.05 s**. Stored offsets display two decimal places,
+e.g. 18.15 → 18.20 → 18.25. Exact halfway values round away from zero. Drift remains
+a separate measured value; rounding does not promise sample-perfect audio.
 
 ### Open a stream
 
@@ -19,10 +47,9 @@ Optional HTTP headers use one `Name: value` per line. Commas and backslashes in
 values are preserved. Headers apply to the stream and its playlist/segment requests;
 only use headers intended for the servers serving that stream.
 
-This opens media URLs, not Patreon post pages. It does not extract links, sign in,
-bypass access restrictions or resolve YouTube pages. Signed media URLs may expire;
-use **Open URL** again with a fresh authorized URL when needed. YouTube resolution
-is milestone 8.
+Patreon requires a direct media URL, not a post page. The Patreon path does not
+extract links or sign in. YouTube video links use the separate resolver described above. Signed media URLs may expire;
+use **Open URL** again with a fresh authorized URL when needed. 
 
 URLs and headers are not persisted or written to application logs. They are cleared
 on each replacement load and do not transfer to the other player. Network failures
@@ -63,7 +90,7 @@ changes preserve the stored offset. Each pane shows its own current speed.
 | G | Toggle favorite speed and the previous speed |
 | J / K / L | Back 5 s / play-pause / forward 5 s, both players |
 | Left / Space / Right | Existing aliases for the same shared actions |
-| Comma / period | Offset −0.1 s / +0.1 s |
+| Comma / period | Offset −0.05 s / +0.05 s |
 | Shift + J/K/L or arrows/Space | Apply to the player under the pointer |
 | Shift + A/S/D/G | Still change the shared speed for both players |
 | F / F11; Esc | Toggle fullscreen; exit fullscreen |
@@ -100,7 +127,7 @@ and allow alignment recovery; they no longer disable correction indefinitely.
 These are separate native players, so sample-perfect audio is not guaranteed; real
 media testing still matters. The 80 ms correction threshold is unchanged.
 
-“What Did They Say?” and YouTube resolution remain later stages.
+“What Did They Say?” and audio-assisted automatic sync remain later stages.
 
 ## Technology
 
@@ -124,12 +151,10 @@ checks in `PlaybackVerification.cs`. Personal mpv configuration/scripts are disa
 2. Extract the artifact and the inner ZIP into a fresh folder. Keep all files together.
 3. Launch **FullLengthPlayer.exe**, choose **Open video**, and select a local MKV/MP4.
 4. Load Source B, align while paused, then **Lock current alignment**.
-5. In Reaction A, choose Open URL and paste a currently working direct Patreon HLS
-   URL, leaving the Patreon preset checked. Keep your local show loaded in B.
-6. Check sound/video, pause, seeking, lock/nudges and shared speed with that pair.
-7. Replace A with another URL or a local file; check loading and recovery if a link
-   has expired. For non-Patreon streams, clear the preset unless that Referer is needed.
-8. Try the new fixed 16:10 canvas as well as 4:3/16:9; check the preview matches fullscreen.
+5. Open a public or unlisted YouTube video in A. Wait for video **and audio** to start.
+6. Load B locally, align and lock; confirm the stored offset is a multiple of 0.05 s.
+7. Test comma/period and the ±0.05 buttons, shared seeking, speed and fullscreen.
+8. Try replacing YouTube with Patreon or a local file, and cancelling a pending lookup.
 
 Please report stutter, black video, missing sound/subtitles, or one player's controls
 unexpectedly affecting the other. Keep all downloaded files together. The app still
@@ -138,7 +163,7 @@ has its temporary standard Windows icon and title bar.
 ## Planned full player
 
 - Reaction = Player A/master; local source = Player B, following `B = A + offset`.
-- Shared play/pause, seeking and speed, independent alignment controls, ±0.10 s nudges,
+- Shared play/pause, seeking and speed, independent alignment controls, ±0.05 s nudges,
   drift correction, and separate volumes/tracks/subtitles. Both audio tracks play.
 - Crop and reposition the reaction inside its mask. Overlay the source horizontally
   centered, resizable, and anchored to the top or bottom of the whole canvas.
@@ -195,3 +220,9 @@ The project does not end with functional milestones. A dedicated polish stage wi
 make the visible controls attractive and more compact while preserving the fixed
 aspect preview, setup-before-viewing workflow and clean fullscreen composition.
 Gonz's main display is currently a 4:3 iPad Pro streaming Windows through Moonlight.
+
+Milestone 8 verification exercises the packaged yt-dlp executable against a local
+HTTP media endpoint, YouTube URL normalization, native split video/audio playback,
+shared seeking/speed, cancellation/replacement, external-audio reset and offset
+rounding/nudges on positive and negative values. These deterministic checks do not
+establish live YouTube availability; Gonz's public/unlisted link test is the acceptance gate.

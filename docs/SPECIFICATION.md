@@ -83,8 +83,8 @@ Do not proceed past a failed or unconfirmed foundation.
 | 4 (confirmed, seek/resume refinement in 5) | Offset and drift correction | Offset maintained through seeking; ±0.1s nudging |
 | 5 (confirmed) | Shared speed, independent audio/subtitles | Speed changes preserve alignment; independent track/volume controls |
 | 6 (confirmed) | Composition | Reaction crop/pan and centered top/bottom source resizing |
-| 7 (current) | Patreon/HLS and headers | Authorized real stream playback with correct Referer |
-| 8 | YouTube resolution | Unlisted reaction URL playback |
+| 7 (confirmed) | Patreon/HLS and headers | Authorized real stream playback with correct Referer |
+| 8 (current) | YouTube resolution | Unlisted reaction URL playback |
 | 9 | Audio-assisted automatic alignment | Confidence and accuracy against real reaction recordings |
 | 10 | Reaction conveniences | What Did They Say restores exact state at trigger time; persistence and remaining conveniences |
 
@@ -228,3 +228,25 @@ user-authorized Patreon stream remains the real-service acceptance test.
 After the functionality roadmap, explicitly schedule a UI polish stage: attractive,
 compact controls; retain setup preview and controls disappearing in fullscreen.
 Functional completion alone is not the end of this project.
+
+
+## Milestone 8 — confirmed M7 and revised offset precision
+
+Gonz confirmed actual Patreon stream loading, seeking, sync with local video and
+shared speed. The 16:10 canvas also filled a MacBook Air screen via Moonlight correctly.
+
+Superseding all earlier 0.1-second requirements: quantize every stored offset to the
+nearest 0.05 s, including capture and typed values. Capture applies the rounded
+alignment immediately. Display the stored value with two decimal places. Buttons,
+comma/period and numeric arrows step ±0.05 s. Halfway ties round away from zero;
+negative values follow the same symmetric rule. Measured drift remains distinct.
+
+M8 resolves public/unlisted individual YouTube links with bundled pinned yt-dlp and
+Deno. Handle separately served video/audio via MPV. Do not import browser cookies,
+personal configs or playlists. Strip playlist/timestamp tracking from recognized
+links; begin at zero for alignment. Resolve asynchronously while current playback
+continues; support cancellation, replacement and shutdown without stale loads.
+Never log extractor output or signed URLs. Dependency updates are explicit builds.
+Live and sign-in-required videos remain outside this milestone's acceptance scope.
+Local extraction/native split-stream tests are required; a real public/unlisted
+YouTube link on Gonz's PC is the final gate before automatic alignment work.

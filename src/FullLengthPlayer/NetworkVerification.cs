@@ -75,7 +75,7 @@ internal sealed class NetworkVerification : IDisposable
                 await Reply("200 OK", Encoding.ASCII.GetBytes("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000\nindex.m3u8?token=fixture\n"), "Content-Type: application/vnd.apple.mpegurl\r\n"); return;
             }
             string name = Path.GetFileName(route);
-            string file = guarded ? Path.Combine(directory, "hls", name) : Path.Combine(directory, "source video.mkv");
+            string file = guarded ? Path.Combine(directory, "hls", name) : Path.Combine(directory, name is "video-only.mkv" or "audio-only.mka" ? name : "source video.mkv");
             if (!File.Exists(file)) { await Reply("404 Not Found", Array.Empty<byte>()); return; }
             var bytes = await File.ReadAllBytesAsync(file, cancellation.Token);
             var type = name.EndsWith(".m3u8") ? "application/vnd.apple.mpegurl" : guarded ? "video/mp2t" : "video/x-matroska";

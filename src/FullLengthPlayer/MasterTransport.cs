@@ -5,6 +5,12 @@ namespace FullLengthPlayer;
 // Owns shared transport and the fixed B = A + offset alignment for the loaded pair.
 internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?> source)
 {
+    internal const double OffsetStep = 0.05;
+    internal static double RoundOffset(double seconds)
+    {
+        if (!double.IsFinite(seconds) || Math.Abs(seconds) > 604800) throw new ArgumentOutOfRangeException(nameof(seconds));
+        return (double)(Math.Round((decimal)seconds / 0.05m, 0, MidpointRounding.AwayFromZero) * 0.05m);
+    }
     internal bool Locked { get; private set; }
     internal double Offset { get; private set; }
     internal double? Drift { get; private set; }
@@ -35,12 +41,15 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         if (seeks.Waiting || Busy(p)) throw new InvalidOperationException("Wait for both videos to finish seeking before locking.");
         if (Math.Abs(p.A.Number("speed") - p.B.Number("speed")) > 0.001)
             throw new InvalidOperationException("Set a shared speed before locking differently paced videos.");
-        Offset = p.BTime - p.ATime;
+        double captured = p.BTime - p.ATime;
+        double rounded = RoundOffset(captured);
+        if (Math.Abs(captured - rounded) > 0.000001) { SetOffset(rounded); return; }
+        Offset = rounded;
         Locked = true; Drift = 0; SyncStatus = "Locked"; Settle();
     }
     internal void SetOffset(double seconds)
     {
-        if (!double.IsFinite(seconds)) throw new ArgumentOutOfRangeException(nameof(seconds));
+        seconds = RoundOffset(seconds);
         var p = Snapshot() ?? throw new InvalidOperationException("Load both videos first.");
         if (Math.Abs(p.A.Number("speed") - p.B.Number("speed")) > 0.001)
             throw new InvalidOperationException("Set a shared speed before locking differently paced videos.");

@@ -26,3 +26,19 @@ The archive hash and the x64 loader's Authenticode signature is verified before 
 distribution/notices are retained in vulkan-distribution. Source and licensing:
 https://github.com/KhronosGroup/Vulkan-Loader/tree/v1.4.357
 The loader is an imported dependency of libmpv, even when using D3D11 output.
+
+
+## YouTube resolver (milestone 8)
+
+The `youtube` folder bundles yt-dlp 2026.08.19 and Deno 2.9.6 for Windows x64.
+Both are downloaded from their official GitHub releases with SHA-256 checks pinned
+in `scripts/fetch-youtube.ps1`. No runtime auto-update is performed.
+
+- yt-dlp: https://github.com/yt-dlp/yt-dlp/releases/tag/2026.08.19
+  Includes its LICENSE and THIRD_PARTY_LICENSES.txt. The official executable also
+  bundles the EJS challenge solver and third-party dependencies covered by those notices.
+- Deno: https://github.com/denoland/deno/releases/tag/v2.9.6
+  Includes upstream LICENSE.md; use the upstream source tag for source and notices.
+
+MPV remains the decoder/player; yt-dlp only resolves the selected video's stream
+metadata. Deno supplies yt-dlp's supported JavaScript runtime.

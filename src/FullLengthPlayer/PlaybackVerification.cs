@@ -122,10 +122,10 @@ internal static class PlaybackVerification
             await Until(() => Math.Abs(a.Number("time-pos") - target) < 0.1 && Math.Abs(b.Number("time-pos") - target - fixedOffset) < 0.1, "Locked seeking accumulated drift.");
             Assert(form.Master.Offset == fixedOffset, "Master seek changed the stored offset.");
         }
-        form.Master.Nudge(0.1);
+        form.Master.Nudge(0.05);
         await Until(() => Math.Abs(b.Number("time-pos") - a.Number("time-pos") - form.Master.Offset) < 0.08, "Positive nudge failed.");
-        Assert(Math.Abs(form.Master.Offset - fixedOffset - 0.1) < 0.001, "Nudge value wrong.");
-        form.Master.Nudge(-0.1);
+        Assert(Math.Abs(form.Master.Offset - fixedOffset - 0.05) < 0.001, "Nudge value wrong.");
+        form.Master.Nudge(-0.05);
         await Until(() => Math.Abs(b.Number("time-pos") - a.Number("time-pos") - fixedOffset) < 0.08, "Negative nudge failed.");
         form.Master.SetOffset(-3);
         form.Master.SeekReaction(0);
@@ -271,7 +271,8 @@ internal static class PlaybackVerification
         Assert(!form.HandleShortcut(Keys.H, pointerA), "H must remain reserved for the later replay feature.");
         Assert(a.Number("volume") == 35 && b.Number("volume") == 70, "Speed shortcuts changed volumes.");
         await NetworkVerification.Run(form, media);
-        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 7, hlsPlayback = true, httpHeaderIsolation = true, hlsSharedSeek = true, httpFailureRecovery = true, canvas16x10 = true, composition = true, fullscreen = true, sharedShiftSpeed = true, nativeSurfaceRetention = true, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
+        await YouTubeVerification.Run(form, media);
+        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 8, youtubeResolver = true, separateYouTubeAudio = true, offsetGrid005 = true, hlsPlayback = true, httpHeaderIsolation = true, hlsSharedSeek = true, httpFailureRecovery = true, canvas16x10 = true, composition = true, fullscreen = true, sharedShiftSpeed = true, nativeSurfaceRetention = true, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
         form.Close();
     }
 }

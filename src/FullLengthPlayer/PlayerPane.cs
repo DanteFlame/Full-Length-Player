@@ -15,6 +15,8 @@ internal sealed class PlayerPane : UserControl
     private string? playbackError;
     private bool dragging;
     private bool network;
+    private CancellationTokenSource? resolving;
+    private readonly ToolStripButton cancelResolve = new("Cancel YouTube") { Visible = false };
     internal string? PlaybackError => playbackError;
     private string fileName = "No video loaded";
     internal MpvPlayer? Player { get; private set; }
@@ -40,6 +42,8 @@ internal sealed class PlayerPane : UserControl
         }
         Button("Open video", Open);
         Button("Open URL", OpenUrl);
+        cancelResolve.Click += (_, _) => CancelResolution();
+        transport.Items.Add(cancelResolve);
         Button("Play / Pause", TogglePause);
         Button("−5 s", () => Seek(-5));
         Button("+5 s", () => Seek(5));
@@ -100,28 +104,53 @@ internal sealed class PlayerPane : UserControl
         Player.Set("pause", "no");
         ActivatePane();
     }
-    internal void OpenUrl()
+    internal async void OpenUrl()
     {
         using var dialog = new NetworkSourceDialog(Role == "Reaction A");
-        if (dialog.ShowDialog(this) == DialogResult.OK && dialog.Source != null) LoadNetwork(dialog.Source);
+        if (dialog.ShowDialog(this) != DialogResult.OK || dialog.Source == null) return;
+        try
+        {
+            if (YouTubeResolver.IsYouTube(dialog.Source.Url)) await LoadYouTube(dialog.Source.Url);
+            else LoadNetwork(dialog.Source);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception e) { MessageBox.Show(this, e.Message, "Open URL"); }
     }
     private void PrepareLoad(bool remote, string title)
     {
         if (Player == null) throw new InvalidOperationException("MPV is unavailable.");
+        CancelResolution();
         ManualTransport?.Invoke(); MediaReplaced?.Invoke();
         Player.Command("stop");
         Player.PollError(); // Discard failures from the previous load.
+        Player.SetStringList("audio-files", Array.Empty<string>());
         Player.Set("referrer", "");
         Player.SetStringList("http-header-fields", Array.Empty<string>());
         network = remote; playbackError = null; fileName = title;
     }
-    internal void LoadNetwork(NetworkSource source)
+    internal void CancelResolution() { resolving?.Cancel(); resolving = null; cancelResolve.Visible = false; }
+    internal async Task LoadYouTube(string url, Func<string, CancellationToken, Task<ResolvedVideo>>? resolver = null)
     {
-        PrepareLoad(true, "Network stream");
+        string canonical = YouTubeResolver.CanonicalUrl(url);
+        CancelResolution();
+        using var request = new CancellationTokenSource(); resolving = request; cancelResolve.Visible = true;
+        try
+        {
+            var result = await (resolver ?? YouTubeResolver.Resolve)(canonical, request.Token);
+            request.Token.ThrowIfCancellationRequested();
+            LoadResolved(result);
+        }
+        finally { if (resolving == request) { resolving = null; cancelResolve.Visible = false; } }
+    }
+    internal void LoadResolved(ResolvedVideo result) => LoadNetwork(result.Video, result.AudioUrl, "YouTube video");
+    internal void LoadNetwork(NetworkSource source, string? audioUrl = null, string title = "Network stream")
+    {
+        PrepareLoad(true, title);
         try
         {
             Player!.Set("referrer", source.Referer);
             Player.SetStringList("http-header-fields", source.Headers);
+            if (audioUrl != null) Player.SetStringList("audio-files", new[] { audioUrl });
             Player.Command("loadfile", source.Url, "replace");
             Player.Set("pause", "no");
         }
@@ -174,8 +203,9 @@ internal sealed class PlayerPane : UserControl
     {
         if (Player == null) return;
         var error = Player.PollError();
-        if (error != null) playbackError = network
-            ? "Stream unavailable. Check the direct URL, expiry/access and HTTP headers; open a fresh URL to retry."
+        if (error != null) playbackError = fileName == "YouTube video"
+            ? "YouTube stream unavailable — open the original video link again to refresh it."
+            : network ? "Stream unavailable. Check the direct URL, expiry/access and HTTP headers; open a fresh URL to retry."
             : error;
         double time = Player.Number("time-pos"), duration = Player.Number("duration");
         if (!dragging) timeline.Value = duration > 0 ? (int)Math.Clamp(time / duration * 10000, 0, 10000) : 0;
@@ -183,8 +213,9 @@ internal sealed class PlayerPane : UserControl
             ? $"{(Player.Get("pause") == "yes" ? "Paused" : "Playing")}  {TimeSpan.FromSeconds(time):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(duration):hh\\:mm\\:ss}  • {Player.Number("speed"):0.##}×"
             : network ? (playbackError != null ? playbackError : Player.Get("idle-active") == "yes" ? "Stream ended or unavailable — open a fresh URL to retry" : "Opening stream…") : "Open a local video";
         if (network && playbackError == null && Player.Get("paused-for-cache") == "yes") status.Text = "Buffering stream…";
+        if (resolving != null) status.Text = "Resolving YouTube… (current playback continues; Cancel YouTube to stop)";
     }
-    internal void Shutdown() { Player?.Dispose(); Player = null; }
+    internal void Shutdown() { CancelResolution(); Player?.Dispose(); Player = null; }
     protected override void Dispose(bool disposing)
     {
         if (disposing) Shutdown();
