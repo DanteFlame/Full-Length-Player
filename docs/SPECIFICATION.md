@@ -84,8 +84,8 @@ Do not proceed past a failed or unconfirmed foundation.
 | 5 (confirmed) | Shared speed, independent audio/subtitles | Speed changes preserve alignment; independent track/volume controls |
 | 6 (confirmed) | Composition | Reaction crop/pan and centered top/bottom source resizing |
 | 7 (confirmed) | Patreon/HLS and headers | Authorized real stream playback with correct Referer |
-| 8 (current) | YouTube resolution | Unlisted reaction URL playback |
-| 9 | Audio-assisted automatic alignment | Confidence and accuracy against real reaction recordings |
+| 8 (confirmed) | YouTube resolution | Unlisted reaction URL playback |
+| 9 (current) | Audio-assisted automatic alignment | Confidence and accuracy against real reaction recordings |
 | 10 | Reaction conveniences | What Did They Say restores exact state at trigger time; persistence and remaining conveniences |
 
 ## Foundation decisions
@@ -265,3 +265,23 @@ and preserve play/pause intent through shared seeks and speed changes. This
 supersedes the earlier shared-range clamping behavior for locked playback.
 Keep B visible for now; hiding it outside its interval is deferred.
 Default both crop top and crop bottom to zero; Gonz sets his own framing.
+
+
+## Milestone 8 acceptance and milestone 9 experiment
+
+Gonz confirmed the repair build on his PC: YouTube now opens without an error,
+zero crop defaults work, and B holds its first frame during A's preamble. No YouTube
+error log is needed. Slower YouTube buffering is deferred performance work.
+Closing discussion behavior passed native Windows tests; real-media feedback is welcome.
+
+M9 first implements a bounded audio-assisted alignment: the user positions both clips
+near the same scene; analyze 20 seconds of A against B within ±30 seconds of the
+current relationship. Use selected audio tracks, original speed, independent of volumes.
+Local files, direct network media/Patreon headers and resolved YouTube separate audio
+use the same in-memory source configuration in extra audio-only MPV instances.
+Compare temporal log-energy changes in frequency bands; reject silence, weak or
+ambiguous peaks. Suggest, never silently apply; Apply and lock uses the 0.05 grid.
+Cancellation or failure leaves playback/lock unchanged. Temporary PCM is deleted.
+This is an experiment, not a guarantee under room audio/commentary or different edits.
+Full-duration fingerprint search remains future work after this approach is tested.
+Keep H replay and the explicit later compact UI polish stage on the roadmap.

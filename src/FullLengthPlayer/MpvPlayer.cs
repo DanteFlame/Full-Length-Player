@@ -7,7 +7,7 @@ namespace FullLengthPlayer;
 internal sealed class MpvPlayer : IDisposable
 {
     private IntPtr handle;
-    public MpvPlayer(IntPtr window, bool verification = false)
+    public MpvPlayer(IntPtr window, bool verification = false, string? pcmFile = null, double start = 0, double length = 0)
     {
         handle = Native.mpv_create();
         if (handle == IntPtr.Zero) throw new InvalidOperationException("MPV could not be created.");
@@ -19,15 +19,25 @@ internal sealed class MpvPlayer : IDisposable
             Option("ytdl", "no");
             Option("tls-verify", "yes");
             Option("network-timeout", "20");
-            Option("wid", window.ToInt64().ToString(CultureInfo.InvariantCulture));
-            Option("vo", "gpu");
-            Option("gpu-api", "d3d11");
-            Option("hwdec", "auto-safe");
-            Option("keep-open", "yes");
-            Option("input-default-bindings", "no");
-            Option("input-vo-keyboard", "no");
-            Option("osc", "no");
-            if (verification) Option("ao", "null"); // Hosted runner has no speakers.
+            if (pcmFile != null)
+            {
+                Option("vid", "no"); Option("sid", "no");
+                Option("ao", "pcm"); Option("ao-pcm-file", pcmFile);
+                Option("ao-pcm-waveheader", "no"); Option("audio-format", "s16");
+                Option("audio-samplerate", "8000"); Option("audio-channels", "mono");
+                Option("untimed", "yes"); Option("keep-open", "no");
+                Option("start", start.ToString(CultureInfo.InvariantCulture));
+                Option("length", length.ToString(CultureInfo.InvariantCulture));
+            }
+            else
+            {
+                Option("wid", window.ToInt64().ToString(CultureInfo.InvariantCulture));
+                Option("vo", "gpu"); Option("gpu-api", "d3d11");
+                Option("hwdec", "auto-safe"); Option("keep-open", "yes");
+                Option("input-default-bindings", "no"); Option("input-vo-keyboard", "no");
+                Option("osc", "no");
+                if (verification) Option("ao", "null"); // Hosted runner has no speakers.
+            }
             Check(Native.mpv_initialize(handle));
         }
         catch { Dispose(); throw; }
@@ -82,6 +92,7 @@ internal sealed class MpvPlayer : IDisposable
         }
         finally { foreach (var p in pointers) if (p != IntPtr.Zero) Marshal.FreeCoTaskMem(p); }
     }
+    internal bool Ended { get; private set; }
     public string? PollError()
     {
         string? error = null;
@@ -91,6 +102,7 @@ internal sealed class MpvPlayer : IDisposable
             if (ev.Id == 0) break;
             if (ev.Id == 7 && ev.Data != IntPtr.Zero)
             {
+                Ended = true;
                 var end = Marshal.PtrToStructure<Native.EndFile>(ev.Data);
                 if (end.Reason == 4) error = Error(end.Error);
             }

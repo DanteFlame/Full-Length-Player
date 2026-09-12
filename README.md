@@ -3,7 +3,35 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 8 — YouTube links and 0.05-second offsets
+## Current build: milestone 9 — experimental audio-assisted alignment
+
+Milestone 8 is confirmed on Gonz's PC: YouTube now loads, cropping starts at zero,
+and B waits at its first frame during the reaction preamble. YouTube buffering
+performance is a later improvement. End-of-source discussion passed automated
+Windows testing; a real-media confirmation remains useful.
+
+### Find audio sync
+
+Position both players near the same shared scene, within roughly 30 seconds of
+alignment. Choose **Find audio sync… → Analyze audio**. The app reads 20 seconds
+of Reaction A and searches nearby Source B audio using the selected audio tracks.
+Clear shared music/dialogue works best; heavy commentary, different edits, dubbing,
+repeated music or little audible source audio may prevent a match.
+
+A clear result offers **Apply and lock**, rounding to the existing 0.05-second grid.
+Listen afterward and retain your previous offset if you want to restore it manually.
+The match score is a similarity measure, not a probability or guarantee. Ambiguous
+results change nothing. Cancel leaves playback and alignment untouched.
+
+Analysis uses additional audio-only libmpv instances and temporary mono PCM samples
+on this PC, removed when the operation finishes or is canceled. It does not use a
+cloud analysis service. Network media requires additional stream requests with the
+same HTTP settings; expired URLs may need reopening. Each sample read times out
+after two minutes. Playback speed and volume do not affect the analysis. This first
+version refines a nearby alignment; whole-episode search is not implemented.
+
+The underlying PCM output options are documented in the [MPV manual](https://mpv.io/manual/master/#audio-output-drivers).
+
 
 Gonz confirmed Patreon HLS playback with his actual stream: immediate loading,
 seeking, synchronization with local media and speed controls all work. He also
@@ -21,8 +49,8 @@ The bundled **yt-dlp + Deno** resolver retrieves the streams, then MPV plays the
 selected video and audio, including separately served high-quality tracks. Existing
 playback continues during lookup. **Cancel YouTube**, opening another source or
 closing the app cancels it; a stale lookup cannot replace newer media. Lookups time
-out after 90 seconds. URLs, signed stream metadata and extractor diagnostics are not
-saved to application logs; browser cookies and personal extractor configs are not used.
+out after 90 seconds. URLs and signed stream metadata are not saved to application logs; failures save
+a redacted diagnostic summary to `%LOCALAPPDATA%\FullLengthPlayer\logs\youtube-error.log`; browser cookies and personal extractor configs are not used.
 
 This milestone targets public/unlisted on-demand videos viewable without signing in.
 Private, sign-in/age-gated videos and live broadcasts are not supported here. YouTube

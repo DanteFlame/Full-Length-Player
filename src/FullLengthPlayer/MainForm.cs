@@ -58,6 +58,7 @@ internal sealed class MainForm : Form
         SyncButton("Apply offset", () => Master.SetOffset((double)offsetInput.Value));
         SyncButton("−0.05 s", () => Master.Nudge(-MasterTransport.OffsetStep));
         SyncButton("+0.05 s", () => Master.Nudge(MasterTransport.OffsetStep));
+        SyncButton("Find audio sync…", FindAudioSync);
         syncBar.Controls.Add(syncStatus);
         masterBar.Items.Add(new ToolStripLabel("BOTH PLAYERS"));
         void MasterButton(string text, Action action)
@@ -141,6 +142,13 @@ internal sealed class MainForm : Form
                 }
             }
         };
+    }
+    private void FindAudioSync()
+    {
+        var p = Master.Snapshot() ?? throw new InvalidOperationException("Load both videos first.");
+        if (Master.SeekingTogether) throw new InvalidOperationException("Wait for seeking to finish first.");
+        using var dialog = new AudioSyncDialog(Reaction.CaptureAudio(), Source.CaptureAudio(), p.ATime, p.BTime, p.ADuration, p.BDuration);
+        if (dialog.ShowDialog(this) == DialogResult.OK) Master.SetOffset(dialog.Offset);
     }
     private void BuildCompositionControls()
     {

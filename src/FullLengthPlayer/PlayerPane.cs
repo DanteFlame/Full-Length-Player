@@ -15,6 +15,9 @@ internal sealed class PlayerPane : UserControl
     private string? playbackError;
     private bool dragging;
     private bool network;
+    private AudioInput? analysisInput;
+    internal AudioInput CaptureAudio() => analysisInput is { } input && Player?.Get("aid") is { } aid && aid != "no"
+        ? input with { Track = aid } : throw new InvalidOperationException("Select an audio track in both players first.");
     private CancellationTokenSource? resolving;
     private readonly ToolStripButton cancelResolve = new("Cancel YouTube") { Visible = false };
     internal string? PlaybackError => playbackError;
@@ -100,6 +103,7 @@ internal sealed class PlayerPane : UserControl
         if (!File.Exists(path)) throw new FileNotFoundException("Local video not found.", path);
         PrepareLoad(false, "No video loaded");
         fileName = Path.GetFileName(path);
+        analysisInput = new(Path.GetFullPath(path), "", Array.Empty<string>(), null, "auto");
         Player.Command("loadfile", Path.GetFullPath(path), "replace");
         Player.Set("pause", "no");
         ActivatePane();
@@ -120,6 +124,7 @@ internal sealed class PlayerPane : UserControl
     {
         if (Player == null) throw new InvalidOperationException("MPV is unavailable.");
         CancelResolution();
+        analysisInput = null;
         ManualTransport?.Invoke(); MediaReplaced?.Invoke();
         Player.Command("stop");
         Player.PollError(); // Discard failures from the previous load.
@@ -148,6 +153,7 @@ internal sealed class PlayerPane : UserControl
         PrepareLoad(true, title);
         try
         {
+            analysisInput = new(source.Url, source.Referer, source.Headers.ToArray(), audioUrl, "auto");
             Player!.Set("referrer", source.Referer);
             Player.SetStringList("http-header-fields", source.Headers);
             if (audioUrl != null) Player.SetStringList("audio-files", new[] { audioUrl });
