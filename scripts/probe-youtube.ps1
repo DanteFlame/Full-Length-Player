@@ -11,9 +11,11 @@ try {
     $null = $p.Start(); $outTask = $p.StandardOutput.ReadToEndAsync(); $errTask = $p.StandardError.ReadToEndAsync()
     if (!$p.WaitForExit(95000)) { $p.Kill($true); $p.WaitForExit(); $result = 'timeout' }
     else { $result = if ($p.ExitCode -eq 0) { 'extraction succeeded' } else { 'extraction failed' } }
-    $detail = $errTask.GetAwaiter().GetResult() -replace 'https?://\S+', '[URL]' -replace 'aqz-KE-bpKQ', '[video ID]' -replace '[A-Za-z0-9_\-+/=]{32,}', '[opaque value]'
+    $rawError = $errTask.GetAwaiter().GetResult()
+    $category = if ($rawError -match 'not a bot') { 'YouTube sign-in/bot check' } elseif ($rawError -match 'format is not available') { 'Requested formats unavailable' } elseif ($rawError -match 'JavaScript|deno') { 'JavaScript runtime/challenge error' } elseif ($rawError -match 'certificate') { 'Certificate error' } else { 'See redacted details' }
+    $detail = $rawError -replace 'https?://\S+', '[URL]' -replace 'aqz-KE-bpKQ', '[video ID]' -replace '[A-Za-z0-9_\-+/=]{32,}', '[opaque value]'
     $detail = $detail -replace '(?im)^.*(?:cookie|authorization|password|bearer).*$', '[credential-related line omitted]'
-    $summary = "Live public YouTube probe: $result`n$detail"
+    $summary = "Live public YouTube probe: $result`nCategory: $category`n$detail"
     New-Item -ItemType Directory -Force test-results | Out-Null
     $summary | Set-Content test-results/youtube-probe.txt
     Write-Host $summary

@@ -30,7 +30,7 @@ internal static class ResolverDiagnostics
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
-            File.WriteAllText(LogPath, $"UTC: {DateTime.UtcNow:O}\nStage: {kind}\nApp: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}\nyt-dlp: 2026.08.19; Deno: 2.9.6\n64-bit OS: {Environment.Is64BitOperatingSystem}\nyt-dlp exists: {File.Exists(Path.Combine(AppContext.BaseDirectory, "youtube", "yt-dlp.exe"))}\nDeno exists: {File.Exists(Path.Combine(AppContext.BaseDirectory, "youtube", "deno.exe"))}\n{cleaned}\n");
+            File.WriteAllText(LogPath, $"UTC: {DateTime.UtcNow:O}\nStage: {kind}\nReason: {reason}\nApp: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}\nyt-dlp: 2026.08.19; Deno: 2.9.6\n64-bit OS: {Environment.Is64BitOperatingSystem}\nyt-dlp exists: {File.Exists(Path.Combine(AppContext.BaseDirectory, "youtube", "yt-dlp.exe"))}\nDeno exists: {File.Exists(Path.Combine(AppContext.BaseDirectory, "youtube", "deno.exe"))}\n{cleaned}\n");
             return reason + "\n\nA redacted diagnostic was saved to:\n" + LogPath + "\n\nPlease share that file if retrying fails.";
         }
         catch (IOException) { return reason + " The diagnostic file could not be written."; }
