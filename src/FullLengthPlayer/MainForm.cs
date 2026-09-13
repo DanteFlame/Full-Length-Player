@@ -26,6 +26,32 @@ internal sealed class MainForm : Form, IMessageFilter
     private readonly TrackBar masterTimeline = new() { Dock = DockStyle.Top, Height = 32, Maximum = 10000, TickStyle = TickStyle.None };
     private readonly Label masterStatus = new() { Dock = DockStyle.Top, Height = 24, ForeColor = Color.White, AutoEllipsis = true };
     private bool masterDragging;
+    internal FullscreenOverlay Hud { get; } = new();
+    private long fullscreenActivity;
+    private Point lastPointer;
+    private bool cursorHidden;
+    private ComboBox? canvasChoice;
+    internal static int ClosestCanvas(Size display)
+    {
+        double aspect = display.Width / (double)Math.Max(1, display.Height);
+        double[] options = { 16.0 / 9, 4.0 / 3, 16.0 / 10 };
+        return Enumerable.Range(0, 3).MinBy(i => Math.Abs(Math.Log(options[i] / aspect)));
+    }
+    internal void RevealFullscreen()
+    {
+        fullscreenActivity = Environment.TickCount64;
+        if (Fullscreen) { Hud.Visible = true; Hud.BringToFront(); }
+        if (cursorHidden) { Cursor.Show(); cursorHidden = false; }
+    }
+    internal void UpdateFullscreen(long now, Point pointer, bool focused)
+    {
+        if (!Fullscreen || !focused) { Hud.Visible = false; if (cursorHidden) { Cursor.Show(); cursorHidden = false; } return; }
+        if (pointer != lastPointer) { lastPointer = pointer; RevealFullscreen(); }
+        if (Hud.Dragging) RevealFullscreen();
+        bool visible = now - fullscreenActivity < 2500;
+        Hud.Visible = visible;
+        if (!visible && !cursorHidden && Bounds.Contains(pointer)) { Cursor.Hide(); cursorHidden = true; }
+    }
     private readonly FlowLayoutPanel syncBar = new() { Dock = DockStyle.Top, Height = 36, AutoScroll = true, WrapContents = false, BackColor = SystemColors.Control };
     private readonly NumericUpDown offsetInput = new() { DecimalPlaces = 2, Increment = 0.05m, Minimum = -604800, Maximum = 604800, Width = 110 };
     private readonly Label syncStatus = new() { AutoSize = true, Padding = new Padding(0, 6, 0, 0) };
@@ -76,8 +102,8 @@ internal sealed class MainForm : Form, IMessageFilter
             masterBar.Items.Add(button);
         }
         MasterButton("Play / Pause both", Master.TogglePause);
-        MasterButton("−10 s both", () => Master.Jump(-10));
-        MasterButton("+10 s both", () => Master.Jump(10));
+        MasterButton("−5 s both", () => Master.Jump(-5));
+        MasterButton("+5 s both", () => Master.Jump(5));
         masterBar.Items.Add(new ToolStripSeparator());
         MasterButton("−0.25× (S)", () => SharedSpeed.Step(-0.25));
         MasterButton("+0.25× (D)", () => SharedSpeed.Step(0.25));
@@ -111,6 +137,10 @@ internal sealed class MainForm : Form, IMessageFilter
         Controls.Add(masterStatus);
         Controls.Add(syncBar);
         Controls.Add(masterBar);
+        Controls.Add(Hud);
+        Hud.Seek += fraction => RunMaster(() => Master.SeekReaction(Master.TimelineStart + (Master.TimelineEnd - Master.TimelineStart) * fraction));
+        Hud.Activity += RevealFullscreen;
+        Resize += (_, _) => Hud.Bounds = new Rectangle(0, Math.Max(0, ClientSize.Height - Hud.Height), ClientSize.Width, Hud.Height);
         UpdateMaster();
         Reaction.Surface.MouseDown += (_, _) => ActiveControl = null;
         Source.Surface.MouseDown += (_, _) => ActiveControl = null;
@@ -119,6 +149,7 @@ internal sealed class MainForm : Form, IMessageFilter
         SelectPane(Reaction);
         timer.Tick += (_, _) =>
         {
+            UpdateFullscreen(Environment.TickCount64, Cursor.Position, Form.ActiveForm == this);
             try { Master.Tick(); Replay.Tick(); } catch (Exception e) { Master.Unlock("Sync stopped: " + e.Message); }
             if (Environment.TickCount64 < nextUiUpdate) return;
             nextUiUpdate = Environment.TickCount64 + 200;
@@ -130,6 +161,7 @@ internal sealed class MainForm : Form, IMessageFilter
             bool verify = args.Length == 3 && args[0] == "--verify-playback";
             try
             {
+                canvasChoice!.SelectedIndex = ClosestCanvas(Screen.FromControl(this).Bounds.Size);
                 Reaction.Initialize(verify);
                 Source.Initialize(verify);
                 timer.Start();
@@ -162,15 +194,15 @@ internal sealed class MainForm : Form, IMessageFilter
     }
     private void BuildCompositionControls()
     {
-        void Choice(string label, string[] choices, Action<int> change)
+        ComboBox Choice(string label, string[] choices, Action<int> change)
         {
             compositionBar.Controls.Add(new Label { Text = label, AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
             var box = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90 };
             box.Items.AddRange(choices); box.SelectedIndex = 0;
             box.SelectedIndexChanged += (_, _) => { change(box.SelectedIndex); Composition.Arrange(); };
-            compositionBar.Controls.Add(box);
+            compositionBar.Controls.Add(box); return box;
         }
-        Choice("Canvas", new[] { "16:9", "4:3", "16:10" }, i => Composition.CanvasAspect = i switch { 0 => 16.0 / 9, 1 => 4.0 / 3, _ => 16.0 / 10 });
+        canvasChoice = Choice("Canvas", new[] { "16:9", "4:3", "16:10" }, i => Composition.CanvasAspect = i switch { 0 => 16.0 / 9, 1 => 4.0 / 3, _ => 16.0 / 10 });
         Choice("Source edge", new[] { "Bottom", "Top" }, i => Composition.TopAnchor = i == 1);
         NumericUpDown Number(string label, decimal value, decimal min, decimal max, Action<double> change)
         {
@@ -210,16 +242,17 @@ internal sealed class MainForm : Form, IMessageFilter
         Composition.ShowHandles = !Fullscreen;
         ActiveControl = null;
         ResumeLayout(true); Composition.Arrange();
+        if (Fullscreen) { lastPointer = Cursor.Position; RevealFullscreen(); } else { Hud.Visible = false; if (cursorHidden) { Cursor.Show(); cursorHidden = false; } }
     }
     private void RunMaster(Action action)
     {
-        try { Replay.Cancel(); action(); } catch (Exception e) { MessageBox.Show(this, e.Message, "Shared playback error"); }
+        try { Replay.Cancel(); action(); RevealFullscreen(); } catch (Exception e) { MessageBox.Show(this, e.Message, "Shared playback error"); }
         UpdateMaster();
     }
     private void SeekMasterTimeline()
     {
         var position = Master.Snapshot();
-        if (position != null) RunMaster(() => Master.SeekReaction(position.ADuration * masterTimeline.Value / 10000.0));
+        if (position != null) RunMaster(() => Master.SeekReaction(Master.TimelineStart + (Master.TimelineEnd - Master.TimelineStart) * masterTimeline.Value / 10000.0));
     }
     private void UpdateMaster()
     {
@@ -236,8 +269,10 @@ internal sealed class MainForm : Form, IMessageFilter
 
         }
         if (position == null) { masterStatus.Text = "Load both videos to use shared controls"; masterTimeline.Value = 0; return; }
-        if (!masterDragging) masterTimeline.Value = (int)Math.Clamp(position.ATime / position.ADuration * 10000, 0, 10000);
-        masterStatus.Text = $"Shared timeline (Reaction A): {TimeSpan.FromSeconds(position.ATime):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(position.ADuration):hh\\:mm\\:ss} • Locked: full reaction timeline; source waits at its first/last frame";
+        double elapsed = Master.TimelineTime - Master.TimelineStart, duration = Master.TimelineEnd - Master.TimelineStart;
+        Hud.UpdatePosition(elapsed, duration);
+        if (!masterDragging) masterTimeline.Value = duration > 0 ? (int)Math.Clamp(elapsed / duration * 10000, 0, 10000) : 0;
+        masterStatus.Text = $"Shared timeline: {TimeSpan.FromSeconds(Math.Max(0, elapsed)):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(Math.Max(0, duration)):hh\\:mm\\:ss} • Locked: both complete videos; each waits at its first/last frame";
     }
     private void SelectPane(PlayerPane pane)
     {
@@ -271,9 +306,10 @@ internal sealed class MainForm : Form, IMessageFilter
         if (keyData == Keys.F2) { SelectPane(Source); return true; }
         if (keyData == (Keys.Control | Keys.O)) { active.Open(); return true; }
         if ((keyData & Keys.Modifiers) != Keys.None && !shift) return false;
-        if (key == Keys.H && !shift) { Replay.Trigger(); return true; }
+        if (key == Keys.H && !shift) { Replay.Trigger(); RevealFullscreen(); return true; }
         if (key is Keys.A or Keys.S or Keys.D or Keys.G or Keys.J or Keys.L or Keys.K or Keys.Space or Keys.Left or Keys.Right or Keys.Oemcomma or Keys.OemPeriod)
             Replay.Cancel();
+        if (key is Keys.J or Keys.L or Keys.K or Keys.Space or Keys.Left or Keys.Right) RevealFullscreen();
         var target = HoverTarget(cursor);
         var speeds = SharedSpeed;
         switch (key)
@@ -332,6 +368,7 @@ internal sealed class MainForm : Form, IMessageFilter
     }
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        if (cursorHidden) { Cursor.Show(); cursorHidden = false; }
         Application.RemoveMessageFilter(this);
         Replay.Cancel();
         timer.Stop(); timer.Dispose();

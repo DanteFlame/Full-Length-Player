@@ -303,3 +303,23 @@ Source top means cropped reaction bottom, and vice versa; anchor survives croppi
 Shift+wheel over actual visible video adjusts only that pane by 5 percentage points
 per notch, bounds 0–100, including fullscreen; source foreground wins overlap.
 Shared speed remains shared regardless of Shift. Persistence and UI polish remain.
+
+
+## Milestone 11 (milestone 10 confirmed; MPV merged to main)
+
+Gonz confirmed H replay, opposite anchoring and all M10 features. Merge the tested
+rebuild into main, preserving history; new work goes on a smaller feature branch.
+Select closest fixed canvas to current display bounds at startup. Fullscreen cursor
+and seekable master timeline reveal on movement, pause/play and skips, then hide
+2.5 seconds after inactivity even when paused; keep visible during dragging.
+Master skip buttons and J/L/arrows are five seconds; H remains ten.
+
+Use a union timeline covering full content of both media: first-frame holds before
+start, final-frame holds after end, following the currently active player when A is
+outside its interval. Preserve stored offset and seek/pause/speed behavior across
+all four boundary cases. H uses the combined clock for its return position.
+
+Multi-sample audio alignment checks separate 20-second sections up to ten minutes
+ahead with ±60-second searches. Require three strong matches agreeing within .10 s;
+use median rounded to .05 s. Reject conflicting strong matches, stop early, use an
+approximately ten-second processing budget, and retain optional single-sample mode.

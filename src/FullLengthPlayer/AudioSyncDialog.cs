@@ -11,15 +11,31 @@ internal sealed class AudioSyncDialog : Form
         Text = "Find audio alignment (experimental)";
         ClientSize = new Size(550, 245); StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = MinimizeBox = false;
-        Controls.Add(new Label { Text = "First position both videos near the same scene (within 60 seconds).\nChoose shared music or dialogue, away from cuts and heavy commentary.\nCompares 20 seconds of A with nearby B audio; playback stays unchanged until Apply.", Left = 16, Top = 16, Width = 515, Height = 75 });
+        Controls.Add(new Label { Text = "First position both videos near the same scene (within 60 seconds).\nChoose shared music or dialogue, away from cuts and heavy commentary.\nPlayback stays unchanged until Apply. Uncheck below for a single sample.", Left = 16, Top = 16, Width = 515, Height = 75 });
+        var consensus = new CheckBox { Text = "Multiple samples (~10-second budget)", Checked = true, Left = 16, Top = 76, Width = 470 };
+        Controls.Add(consensus);
         var start = new Button { Text = "Analyze audio", Left = 16, Top = 200, Width = 125 };
         var close = new Button { Text = "Cancel", Left = 420, Top = 200, Width = 100, DialogResult = DialogResult.Cancel };
         Controls.AddRange(new Control[] { status, start, apply, close }); CancelButton = close;
         start.Click += async (_, _) =>
         {
-            start.Enabled = false; apply.Enabled = false;
+            start.Enabled = false; apply.Enabled = false; consensus.Enabled = false;
             try
             {
+                if (consensus.Checked)
+                {
+                    var progress = new Progress<string>(message => { if (!IsDisposed) status.Text = message; });
+                    var result = await AudioConsensus.Run(a, b, aTime, bTime, aDuration, bDuration, progress, cancellation.Token);
+                    if (IsDisposed) return;
+                    if (result.Match is { } consensusMatch)
+                    {
+                        Offset = consensusMatch.Offset; apply.Enabled = true;
+                        status.Text = $"{result.Agreed} samples agree: B−A {Offset:+0.00;-0.00;0.00} s.\nApply and listen to confirm. {result.Checked} samples checked.";
+                    }
+                    else status.Text = result.Conflict ? "Strong samples disagree. The reaction may contain edits or pauses.\nAlignment unchanged; try a nearby section or the single-sample check."
+                        : $"No consensus yet ({result.Agreed} clear matches / {result.Checked} samples).\nAlignment unchanged. Try another section or uncheck multiple samples.";
+                    return;
+                }
                 double aStart = Math.Max(0, Math.Min(aTime, aDuration - 20));
                 double expectedB = bTime + aStart - aTime;
                 double bStart = Math.Max(0, expectedB - 60);
@@ -43,7 +59,7 @@ internal sealed class AudioSyncDialog : Form
             catch (OperationCanceledException) { }
             catch (Exception) when (IsDisposed) { }
             catch (Exception e) { status.Text = e is InvalidOperationException ? e.Message : "Audio analysis failed. Reopen the media or try local files."; }
-            finally { if (!IsDisposed) start.Enabled = true; }
+            finally { if (!IsDisposed) { start.Enabled = true; consensus.Enabled = true; } }
         };
         FormClosing += (_, _) => cancellation.Cancel();
         // CTS remains usable by an in-flight worker after the dialog is closed.
