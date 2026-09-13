@@ -158,7 +158,7 @@ internal static class PlaybackVerification
         form.Reaction.LoadVideo(media);
         Assert(!form.Master.Locked, "Replacing media must invalidate the lock.");
         // Milestone 5: exercise the real keyboard dispatcher and native speed properties.
-        await Until(() => a.Number("time-pos") > 0.3 && a.Get("seeking") == "no", "Reload not ready for speed test.");
+        await Until(() => a.Number("time-pos") > 0.3 && a.Number("time-pos") < 3 && a.Get("seeking") == "no" && a.Get("idle-active") == "no", "Reload not ready for speed test.");
         a.Set("pause", "yes"); b.Set("pause", "yes");
         a.Command("seek", "8", "absolute+exact"); b.Command("seek", "12", "absolute+exact");
         await Until(() => Math.Abs(a.Number("time-pos") - 8) < 0.1 && Math.Abs(b.Number("time-pos") - 12) < 0.1 && a.Get("seeking") == "no" && b.Get("seeking") == "no", "Speed test alignment failed.");

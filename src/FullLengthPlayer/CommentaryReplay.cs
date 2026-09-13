@@ -14,7 +14,7 @@ internal sealed class CommentaryReplay(PlayerPane a, PlayerPane b, MasterTranspo
         if (master.SeekingTogether || p.A.Get("seeking") == "yes" || p.B.Get("seeking") == "yes")
             throw new InvalidOperationException("Wait for seeking to finish before replaying commentary.");
         if (master.TimelineTime - master.TimelineStart <= 0.05) return;
-        bool paused = p.A.Get("pause") == "yes";
+        bool paused = p.A.Get("pause") == "yes" && p.B.Get("pause") == "yes";
         saved = new(master.TimelineTime, p.A.Number("speed"), p.B.Number("speed"), a.Volume, b.Volume,
             p.A.Get("mute") ?? "no", p.B.Get("mute") ?? "no");
         try

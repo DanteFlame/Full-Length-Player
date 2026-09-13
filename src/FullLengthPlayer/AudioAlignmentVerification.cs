@@ -19,7 +19,7 @@ internal static class AudioAlignmentVerification
             for (int j = 0; j < 6; j++) value += (levels[n, j] * (1 - blend) + levels[n + 1, j] * blend) * Math.Sin(2 * Math.PI * frequencies[j] * t);
             source[i] = (short)(value * 3500);
         }
-        short[] reaction = new short[24 * rate];
+        short[] reaction = new short[100 * rate];
         int delay = (int)(7.35 * rate);
         for (int i = 0; i < reaction.Length; i++)
         {
@@ -64,6 +64,8 @@ internal static class AudioAlignmentVerification
             Check(Math.Abs(a.Length - 20 * rate) < rate / 10, "Decoder sample rate/length incorrect.");
             var decoded = AudioAlignment.Match(a, b, 2, 0, CancellationToken.None);
             Check(decoded.Reliable && Math.Abs(decoded.Offset - 7.35) < 0.051, "Native decoded samples lost timestamp alignment.");
+            var consensus = await AudioConsensus.Run(Input("reaction.wav"), Input("source.wav"), 0, 0, 100, 120, new Progress<string>(), CancellationToken.None);
+            Check(consensus.Match is { } agreed && Math.Abs(agreed.Offset - 7.35) < 0.051 && consensus.Agreed >= 3, "Native multi-sample agreement failed or exceeded budget.");
             try { await AudioAlignment.Decode(Input("source.wav"), 0, 20, canceled.Token); throw new InvalidOperationException("Decode cancellation ignored."); }
             catch (OperationCanceledException) { }
         }
