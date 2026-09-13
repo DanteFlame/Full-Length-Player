@@ -29,7 +29,7 @@ internal static class AudioAlignmentVerification
             reaction[i] = (short)(ambient + commentary);
         }
         var direct = AudioAlignment.Match(reaction[..(20 * rate)], source, 0, 0, CancellationToken.None);
-        Check(direct.Reliable && Math.Abs(direct.Offset - 7.35) < 0.051, "Failed room/noise/volume match.");
+        Check(direct.Reliable && Math.Abs(direct.Offset - 7.35) < 0.051, $"Failed room/noise/volume match: {direct}.");
         var negative = AudioAlignment.Match(reaction[..(20 * rate)], source, 100, 50, CancellationToken.None);
         Check(negative.Reliable && Math.Abs(negative.Offset + 42.65) < 0.051, "Wrong negative offset sign.");
         Check(!AudioAlignment.Match(new short[20 * rate], new short[40 * rate], 0, 0, CancellationToken.None).Reliable, "Silence must not suggest alignment.");

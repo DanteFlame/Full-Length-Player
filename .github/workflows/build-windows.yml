@@ -11,6 +11,8 @@ permissions:
 jobs:
   dual-player:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    permissions:
+      contents: write # Draft preview downloads if Actions artifact storage is full.
     runs-on: windows-2022
     timeout-minutes: 15
     defaults:
@@ -34,12 +36,22 @@ jobs:
       - name: Probe live public YouTube extraction
         run: ./scripts/probe-youtube.ps1 -Executable './publish/launch test/FullLengthPlayer.exe'
       - name: Upload verified application
+        id: application
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           retention-days: 7
           name: FullLengthPlayer-win-x64
           path: publish/FullLengthPlayer-win-x64.zip
           if-no-files-found: error
+      - name: Draft preview download if artifact storage is unavailable
+        if: steps.application.outcome == 'failure' && github.event_name == 'push' && github.ref == 'refs/heads/rebuild/mpv-milestone-0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'milestone-9-preview-' + '${{ github.sha }}'.Substring(0, 12)
+          gh release create $tag 'publish/FullLengthPlayer-win-x64.zip' --draft --target '${{ github.sha }}' --title 'Milestone 9 audio sync — Windows test build' --notes 'Experimental nearby audio alignment. Windows launch and playback checks passed. Position both clips near the same scene, choose Find audio sync, Analyze audio, then Apply and lock if a clear match is found. This draft is for user testing; milestone 9 is not yet accepted.'
+          if ($LASTEXITCODE -ne 0) { throw 'Draft download creation failed.' }
       - name: Collect startup diagnostics
         if: always()
         run: |
@@ -47,6 +59,7 @@ jobs:
           $logs = Join-Path $env:LOCALAPPDATA 'FullLengthPlayer/logs'
           if (Test-Path $logs) { Get-ChildItem $logs -File | ForEach-Object { Get-Content $_.FullName; Copy-Item $_.FullName "test-results/$($_.Name).txt" } }
       - name: Upload launch and playback evidence
+        continue-on-error: true
         if: always()
         uses: actions/upload-artifact@v4
         with:

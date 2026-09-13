@@ -52,6 +52,8 @@ internal static class YouTubeVerification
         Assert(split.AudioUrl != null, "Separate audio was discarded.");
         await form.Reaction.LoadYouTube(canonical, (_, _) => Task.FromResult(split));
         await Until(() => a.Number("time-pos") > 0.5 && a.Number("video-params/w") > 0 && a.Number("audio-params/samplerate") > 0, "Split video/audio playback failed.");
+        var splitSample = await AudioAlignment.Decode(form.Reaction.CaptureAudio(), 2, 20, CancellationToken.None);
+        Assert(splitSample.Length >= 19 * AudioAlignment.Rate, "Audio analysis lost external YouTube audio.");
         Assert(server.Accepted.Contains("/plain/audio-only.mka"), "MPV did not request external audio.");
         Assert(form.Reaction.RefreshTrackMenu(false).DropDownItems.OfType<ToolStripMenuItem>().Any(x => x.Text?.Contains("external") == true), "External audio track missing.");
         a.Set("pause", "yes"); b.Set("pause", "yes");

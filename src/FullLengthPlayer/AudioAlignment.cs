@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Numerics;
 
 namespace FullLengthPlayer;
 
@@ -9,7 +10,8 @@ internal sealed record AudioMatch(double Offset, double Score, double Separation
 internal static class AudioAlignment
 {
     internal const int Rate = 8000, Hop = 400, Window = 800;
-    private static readonly double[] Frequencies = { 180, 250, 350, 480, 650, 850, 1100, 1400, 1750, 2150, 2600, 3100 };
+    private const int Bands = 12;
+    private static readonly int[] BandEdges = { 140, 210, 300, 410, 560, 740, 960, 1230, 1560, 1950, 2380, 2850, 3500 };
 
     internal static async Task<short[]> Decode(AudioInput input, double start, double seconds, CancellationToken cancellation)
     {
@@ -56,25 +58,56 @@ internal static class AudioAlignment
         int count = Math.Max(0, (samples.Length - Window) / Hop + 1);
         var energy = new double[count][];
         var hann = Enumerable.Range(0, Window).Select(i => 0.5 - 0.5 * Math.Cos(2 * Math.PI * i / (Window - 1))).ToArray();
+        var peak = new double[Bands];
         for (int frame = 0; frame < count; frame++)
         {
             token.ThrowIfCancellationRequested();
-            energy[frame] = new double[Frequencies.Length];
-            for (int band = 0; band < Frequencies.Length; band++)
+            var spectrum = new Complex[1024];
+            for (int i = 0; i < Window; i++) spectrum[i] = samples[frame * Hop + i] / 32768.0 * hann[i];
+            Fft(spectrum);
+            energy[frame] = new double[Bands];
+            for (int band = 0; band < Bands; band++)
             {
-                double coefficient = 2 * Math.Cos(2 * Math.PI * Frequencies[band] / Rate), q1 = 0, q2 = 0;
-                for (int i = 0; i < Window; i++)
-                {
-                    double q0 = samples[frame * Hop + i] / 32768.0 * hann[i] + coefficient * q1 - q2;
-                    q2 = q1; q1 = q0;
-                }
-                energy[frame][band] = Math.Log(1e-5 + Math.Max(0, q1 * q1 + q2 * q2 - coefficient * q1 * q2));
+                double power = 0;
+                for (int bin = BandEdges[band] * 1024 / Rate; bin < BandEdges[band + 1] * 1024 / Rate; bin++)
+                    power += spectrum[bin].Real * spectrum[bin].Real + spectrum[bin].Imaginary * spectrum[bin].Imaginary;
+                energy[frame][band] = power;
+                peak[band] = Math.Max(peak[band], power);
             }
         }
+        // Relative floor keeps quiet/noisy bands from dominating the derivative.
+        for (int f = 0; f < count; f++)
+            for (int band = 0; band < Bands; band++)
+                energy[f][band] = Math.Log(energy[f][band] + Math.Max(1e-5, peak[band] * 0.01));
         var result = new double[Math.Max(0, count - 1)][];
         for (int f = 0; f < result.Length; f++)
-            result[f] = Enumerable.Range(0, Frequencies.Length).Select(b => Math.Clamp(energy[f + 1][b] - energy[f][b], -3, 3)).ToArray();
+            result[f] = Enumerable.Range(0, Bands).Select(b => Math.Clamp(energy[f + 1][b] - energy[f][b], -3, 3)).ToArray();
         return result;
+    }
+
+    private static void Fft(Complex[] data)
+    {
+        for (int i = 1, j = 0; i < data.Length; i++)
+        {
+            int bit = data.Length >> 1;
+            for (; (j & bit) != 0; bit >>= 1) j ^= bit;
+            j ^= bit;
+            if (i < j) (data[i], data[j]) = (data[j], data[i]);
+        }
+        for (int size = 2; size <= data.Length; size <<= 1)
+        {
+            var step = Complex.FromPolarCoordinates(1, -2 * Math.PI / size);
+            for (int start = 0; start < data.Length; start += size)
+            {
+                Complex phase = Complex.One;
+                for (int j = 0; j < size / 2; j++)
+                {
+                    var even = data[start + j]; var odd = data[start + j + size / 2] * phase;
+                    data[start + j] = even + odd; data[start + j + size / 2] = even - odd;
+                    phase *= step;
+                }
+            }
+        }
     }
 
     internal static AudioMatch Match(short[] reaction, short[] source, double aStart, double bStart, CancellationToken token)
@@ -88,7 +121,7 @@ internal static class AudioAlignment
             token.ThrowIfCancellationRequested();
             double dot = 0, bPower = 0;
             for (int f = 0; f < a.Length; f++)
-            for (int band = 0; band < Frequencies.Length; band++)
+            for (int band = 0; band < Bands; band++)
             {
                 double x = a[f][band], y = b[f + lag][band];
                 dot += x * y; bPower += y * y;

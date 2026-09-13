@@ -113,6 +113,9 @@ internal sealed class NetworkVerification : IDisposable
         await Until(() => a.Number("time-pos") > 0.5 && b.Number("time-pos") > 0.5 && a.Number("duration") > 30 && a.Number("audio-params/samplerate") > 0, "HLS and direct HTTP did not decode concurrently.");
         Assert(server.Accepted.Contains("/guard/master.m3u8") && server.Accepted.Contains("/guard/index.m3u8") && server.Accepted.Any(x => x.EndsWith(".ts")), "Headers must reach redirects, variant playlists and segments.");
         Assert(form.Reaction.PlaybackError == null && b.Get("referrer") == "", "Network settings leaked between panes.");
+        int beforeAnalysis = server.Rejected;
+        var hlsSample = await AudioAlignment.Decode(form.Reaction.CaptureAudio(), 2, 20, CancellationToken.None);
+        Assert(hlsSample.Length >= 19 * AudioAlignment.Rate && server.Rejected == beforeAnalysis, "Audio analysis lost protected HLS headers.");
         a.Set("pause", "yes"); b.Set("pause", "yes");
         a.Command("seek", "5", "absolute+exact"); b.Command("seek", "8", "absolute+exact");
         await Until(() => Math.Abs(a.Number("time-pos") - 5) < 0.1 && Math.Abs(b.Number("time-pos") - 8) < 0.1 && a.Get("seeking") == "no" && b.Get("seeking") == "no", "Cannot align network sources.");
