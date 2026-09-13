@@ -256,10 +256,10 @@ rounding/nudges on positive and negative values. These deterministic checks do n
 establish live YouTube availability; Gonz's public/unlisted link test is the acceptance gate.
 
 
-## Milestone 8 repair build
+## Milestone 8 repairs (confirmed)
 
-Gonz confirmed non-Patreon CDN playback and all 0.05-second controls. YouTube fails
-on his PC, so milestone 8 remains unconfirmed. Resolver failures now write a redacted
+Gonz confirmed non-Patreon CDN playback, all 0.05-second controls, and successful
+YouTube loading in the repair build. If a resolver failure occurs, it writes a redacted
 `%LOCALAPPDATA%/FullLengthPlayer/logs/youtube-error.log` including the exit/error stage
 and diagnostic text. URLs, video IDs and credential-related lines are removed. The
 previous build discarded stderr; it has no detailed retrospective YouTube log.
@@ -272,5 +272,17 @@ Source visibility stays unchanged for now. Both crop defaults are zero.
 Windows checks include automatic boundary crossing, seeking into/out of preamble
 and discussion, pause/speed behavior while B is held, and diagnostic redaction.
 A separate live public YouTube extraction probe records service behavior from CI;
-CI may face restrictions different from the user's PC. Real user confirmation is
-still required before moving beyond milestone 8.
+CI may face restrictions different from the user's PC. Gonz has now confirmed
+YouTube loading; milestone 9 audio-assisted alignment is awaiting his test.
+
+
+Milestone 9 checks noisy/echoed audio matching, positive and negative offsets,
+silence/unrelated/repeated-audio rejection, cancellation and exact-start native PCM
+extraction. Network tests also extract audio from protected HLS and separately
+served YouTube-style audio. These fixtures do not establish reliability for every
+real reaction recording; the first release remains experimental.
+
+Verified downloads normally use Actions artifacts (seven-day retention). If storage
+is full, a push to the rebuild branch can attach the tested ZIP to a **draft release**
+instead. Existing artifacts are not removed automatically. Draft downloads require
+repository access and do not publish a public release.
