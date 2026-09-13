@@ -85,7 +85,7 @@ Do not proceed past a failed or unconfirmed foundation.
 | 6 (confirmed) | Composition | Reaction crop/pan and centered top/bottom source resizing |
 | 7 (confirmed) | Patreon/HLS and headers | Authorized real stream playback with correct Referer |
 | 8 (confirmed) | YouTube resolution | Unlisted reaction URL playback |
-| 9 (current) | Audio-assisted automatic alignment | Confidence and accuracy against real reaction recordings |
+| 9 (confirmed) | Audio-assisted automatic alignment | Confidence and accuracy against real reaction recordings |
 | 10 | Reaction conveniences | What Did They Say restores exact state at trigger time; persistence and remaining conveniences |
 
 ## Foundation decisions
@@ -285,3 +285,21 @@ Cancellation or failure leaves playback/lock unchanged. Temporary PCM is deleted
 This is an experiment, not a guarantee under room audio/commentary or different edits.
 Full-duration fingerprint search remains future work after this approach is tested.
 Keep H replay and the explicit later compact UI polish stage on the roadmap.
+
+
+## Milestone 10 and milestone 9 acceptance
+
+Gonz tested intro-to-intro and reaction-to-source matching: both were within 0.05 s
+of manual alignment. Increase the nearby search radius to ±60 seconds while retaining
+20-second A samples and conservative match rejection. This expands offset search,
+not automatic selection of a clean reaction passage.
+
+Implement H replay with exact previous speed/volume/mute restoration, offset retained,
+10-second rewind clamped at A=0, normal forward playback afterward. Repeated H ends
+replay early; manual transport/speed/offset/volume edits and media replacement restore
+state before applying the new action. Layout/fullscreen do not cancel replay.
+
+Source top means cropped reaction bottom, and vice versa; anchor survives cropping.
+Shift+wheel over actual visible video adjusts only that pane by 5 percentage points
+per notch, bounds 0–100, including fullscreen; source foreground wins overlap.
+Shared speed remains shared regardless of Shift. Persistence and UI polish remain.

@@ -69,8 +69,9 @@ internal sealed class CompositionView : Panel
         int rh = Math.Max(1, (int)Math.Round(rw / Aspect(reaction)));
         int top = (int)Math.Round(rh * CropTop);
         int visible = Math.Max(1, (int)Math.Round(rh * (1 - CropTop - CropBottom)));
-        mask.Bounds = new Rectangle(0, 0, width, Math.Min(height, visible));
-        reaction.Surface.Bounds = new Rectangle((width - rw) / 2 + (int)(PanX * width), -top + (int)(PanY * height), rw, rh);
+        int maskHeight = Math.Min(height, visible);
+        mask.Bounds = new Rectangle(0, TopAnchor ? height - maskHeight : 0, width, maskHeight);
+        reaction.Surface.Bounds = new Rectangle((width - rw) / 2 + (int)(PanX * width), (TopAnchor ? maskHeight - visible - top : -top) + (int)(PanY * height), rw, rh);
         int sw = Math.Max(1, (int)Math.Round(Math.Min(width * SourceFraction, height * Aspect(source))));
         int sh = Math.Max(1, (int)Math.Round(sw / Aspect(source)));
         source.Surface.Bounds = new Rectangle((width - sw) / 2, TopAnchor ? 0 : height - sh, sw, sh);

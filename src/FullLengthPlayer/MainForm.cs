@@ -1,12 +1,16 @@
 namespace FullLengthPlayer;
 
-internal sealed class MainForm : Form
+internal sealed class MainForm : Form, IMessageFilter
 {
     internal PlayerPane Reaction { get; } = new("Reaction A");
     internal PlayerPane Source { get; } = new("Source B");
     private readonly System.Windows.Forms.Timer timer = new() { Interval = 50 };
     private PlayerPane active;
     internal MasterTransport Master { get; }
+    internal CommentaryReplay Replay { get; }
+    private PlayerPane? wheelPane;
+    private int wheelRemainder;
+    private readonly ToolStripButton replayButton = new("What Did They Say? (H)");
     internal SpeedControl SharedSpeed { get; }
     internal SpeedPreferences Preferences { get; } = new();
     private readonly ToolStripDropDownButton speedMenu = new("Speed: 1×");
@@ -36,6 +40,10 @@ internal sealed class MainForm : Form
         AutoScaleMode = AutoScaleMode.Dpi;
         active = Reaction;
         Master = new MasterTransport(() => Reaction.Player, () => Source.Player);
+        Replay = new CommentaryReplay(Reaction, Source, Master);
+        Reaction.ManualTransport += Replay.Cancel; Source.ManualTransport += Replay.Cancel;
+        Reaction.VolumeEdited += Replay.Cancel; Source.VolumeEdited += Replay.Cancel;
+        Application.AddMessageFilter(this);
         SharedSpeed = new SpeedControl(() => Reaction.Player?.Number("speed") ?? 1, value =>
         {
             Master.SetSpeed(value);
@@ -84,6 +92,8 @@ internal sealed class MainForm : Form
         MasterButton("1× ↔ (A)", () => SharedSpeed.Toggle("normal", 1));
         MasterButton("Favorite ↔ (G)", () => SharedSpeed.Toggle("favorite", Preferences.Favorite));
         MasterButton("Favorite settings", EditFavorite);
+        replayButton.Click += (_, _) => { try { Replay.Trigger(); } catch (Exception e) { MessageBox.Show(this, e.Message, "Commentary replay"); } };
+        masterBar.Items.Add(replayButton);
         masterTimeline.MouseDown += (_, _) => masterDragging = true;
         masterTimeline.MouseUp += (_, _) => { masterDragging = false; SeekMasterTimeline(); };
         masterTimeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown) SeekMasterTimeline(); };
@@ -109,7 +119,7 @@ internal sealed class MainForm : Form
         SelectPane(Reaction);
         timer.Tick += (_, _) =>
         {
-            try { Master.Tick(); } catch (Exception e) { Master.Unlock("Sync stopped: " + e.Message); }
+            try { Master.Tick(); Replay.Tick(); } catch (Exception e) { Master.Unlock("Sync stopped: " + e.Message); }
             if (Environment.TickCount64 < nextUiUpdate) return;
             nextUiUpdate = Environment.TickCount64 + 200;
             Reaction.UpdatePlayback(); Source.UpdatePlayback(); Composition.Arrange(); UpdateMaster();
@@ -203,7 +213,7 @@ internal sealed class MainForm : Form
     }
     private void RunMaster(Action action)
     {
-        try { action(); } catch (Exception e) { MessageBox.Show(this, e.Message, "Shared playback error"); }
+        try { Replay.Cancel(); action(); } catch (Exception e) { MessageBox.Show(this, e.Message, "Shared playback error"); }
         UpdateMaster();
     }
     private void SeekMasterTimeline()
@@ -213,6 +223,7 @@ internal sealed class MainForm : Form
     }
     private void UpdateMaster()
     {
+        replayButton.Text = Replay.Active ? "End commentary replay (H)" : "What Did They Say? (H)";
         var position = Master.Snapshot();
         double aSpeed = Reaction.Player?.Number("speed") ?? 1, bSpeed = Source.Player?.Number("speed") ?? 1;
         speedMenu.Text = Math.Abs(aSpeed - bSpeed) < 0.001 ? $"Speed: {aSpeed:0.##}×" : $"Speed A/B: {aSpeed:0.##}× / {bSpeed:0.##}×";
@@ -260,6 +271,9 @@ internal sealed class MainForm : Form
         if (keyData == Keys.F2) { SelectPane(Source); return true; }
         if (keyData == (Keys.Control | Keys.O)) { active.Open(); return true; }
         if ((keyData & Keys.Modifiers) != Keys.None && !shift) return false;
+        if (key == Keys.H && !shift) { Replay.Trigger(); return true; }
+        if (key is Keys.A or Keys.S or Keys.D or Keys.G or Keys.J or Keys.L or Keys.K or Keys.Space or Keys.Left or Keys.Right or Keys.Oemcomma or Keys.OemPeriod)
+            Replay.Cancel();
         var target = HoverTarget(cursor);
         var speeds = SharedSpeed;
         switch (key)
@@ -283,6 +297,26 @@ internal sealed class MainForm : Form
         }
         return true;
     }
+    internal bool HandleVolumeWheel(Point screen, int delta)
+    {
+        var pane = Composition.HitPlayer(screen);
+        if (pane == null) { wheelPane = null; wheelRemainder = 0; return false; }
+        if (wheelPane != pane) { wheelPane = pane; wheelRemainder = 0; }
+        wheelRemainder += delta;
+        int steps = wheelRemainder / 120;
+        wheelRemainder %= 120;
+        if (steps != 0) pane.AdjustVolume(steps * 5);
+        return true;
+    }
+    public bool PreFilterMessage(ref Message message)
+    {
+        if (message.Msg != 0x020A || !Enabled || Form.ActiveForm != this || Control.ModifierKeys != Keys.Shift) return false;
+        long point = message.LParam.ToInt64();
+        Point screen = new(unchecked((short)(point & 0xffff)), unchecked((short)((point >> 16) & 0xffff)));
+        int delta = unchecked((short)((message.WParam.ToInt64() >> 16) & 0xffff));
+        try { return HandleVolumeWheel(screen, delta); }
+        catch (Exception e) { MessageBox.Show(this, e.Message, "Volume"); return true; }
+    }
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
         // Fullscreen remains reachable after editing crop/size fields.
@@ -298,6 +332,8 @@ internal sealed class MainForm : Form
     }
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        Application.RemoveMessageFilter(this);
+        Replay.Cancel();
         timer.Stop(); timer.Dispose();
         Reaction.Shutdown(); Source.Shutdown();
         base.OnFormClosed(e);

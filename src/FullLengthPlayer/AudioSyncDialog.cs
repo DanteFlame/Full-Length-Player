@@ -11,7 +11,7 @@ internal sealed class AudioSyncDialog : Form
         Text = "Find audio alignment (experimental)";
         ClientSize = new Size(550, 245); StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = MinimizeBox = false;
-        Controls.Add(new Label { Text = "First position both videos near the same scene (within 30 seconds).\nChoose shared music or dialogue, away from cuts and heavy commentary.\nCompares 20 seconds of A with nearby B audio; playback stays unchanged until Apply.", Left = 16, Top = 16, Width = 515, Height = 75 });
+        Controls.Add(new Label { Text = "First position both videos near the same scene (within 60 seconds).\nChoose shared music or dialogue, away from cuts and heavy commentary.\nCompares 20 seconds of A with nearby B audio; playback stays unchanged until Apply.", Left = 16, Top = 16, Width = 515, Height = 75 });
         var start = new Button { Text = "Analyze audio", Left = 16, Top = 200, Width = 125 };
         var close = new Button { Text = "Cancel", Left = 420, Top = 200, Width = 100, DialogResult = DialogResult.Cancel };
         Controls.AddRange(new Control[] { status, start, apply, close }); CancelButton = close;
@@ -22,8 +22,8 @@ internal sealed class AudioSyncDialog : Form
             {
                 double aStart = Math.Max(0, Math.Min(aTime, aDuration - 20));
                 double expectedB = bTime + aStart - aTime;
-                double bStart = Math.Max(0, expectedB - 30);
-                double bLength = Math.Min(bDuration - bStart, expectedB + 50 - bStart);
+                double bStart = Math.Max(0, expectedB - 60);
+                double bLength = Math.Min(bDuration - bStart, expectedB + 80 - bStart);
                 if (aDuration < 20 || bLength < 20) throw new InvalidOperationException("Choose a shared scene with more audio remaining in both videos.");
                 status.Text = "Reading reaction audio…";
                 var samplesA = await AudioAlignment.Decode(a, aStart, 20, cancellation.Token);

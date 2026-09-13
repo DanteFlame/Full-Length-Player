@@ -268,13 +268,14 @@ internal static class PlaybackVerification
         File.WriteAllText(preferencesFile, "invalid json");
         Assert(new SpeedPreferences(preferencesFile).Favorite == 2, "Malformed preferences should fall back safely.");
         File.Delete(preferencesFile);
-        Assert(!form.HandleShortcut(Keys.H, pointerA), "H must remain reserved for the later replay feature.");
+
         Assert(a.Number("volume") == 35 && b.Number("volume") == 70, "Speed shortcuts changed volumes.");
         await NetworkVerification.Run(form, media);
         await YouTubeVerification.Run(form, media);
         await BoundaryVerification.Run(form);
         await AudioAlignmentVerification.Run();
-        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 9, audioAlignment = true, reactionPreambleAndDiscussion = true, youtubeDiagnostics = true, youtubeResolver = true, separateYouTubeAudio = true, offsetGrid005 = true, hlsPlayback = true, httpHeaderIsolation = true, hlsSharedSeek = true, httpFailureRecovery = true, canvas16x10 = true, composition = true, fullscreen = true, sharedShiftSpeed = true, nativeSurfaceRetention = true, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
+        await ConvenienceVerification.Run(form, media);
+        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 10, commentaryReplay = true, hoverVolumeWheel = true, oppositeReactionAnchor = true, audioAlignment = true, reactionPreambleAndDiscussion = true, youtubeDiagnostics = true, youtubeResolver = true, separateYouTubeAudio = true, offsetGrid005 = true, hlsPlayback = true, httpHeaderIsolation = true, hlsSharedSeek = true, httpFailureRecovery = true, canvas16x10 = true, composition = true, fullscreen = true, sharedShiftSpeed = true, nativeSurfaceRetention = true, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
         form.Close();
     }
 }

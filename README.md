@@ -3,7 +3,30 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 9 — experimental audio-assisted alignment
+## Current build: milestone 10 — commentary replay and viewing controls
+
+Gonz confirmed audio alignment against matching anime intros and a real reaction,
+within 0.05 seconds of his manual alignment. The search radius is now ±60 seconds;
+it still compares a 20-second A sample and rejects weak or ambiguous matches.
+A wider radius searches more possible offsets; it does not automatically choose a
+cleaner reaction scene. Move A to clearer shared audio if commentary overwhelms it.
+
+- **H / What Did They Say?**: with alignment locked, rewind A by up to ten seconds
+  and position B using the stored offset. Play both at 1×, mute B, unmute A at 100%.
+  At A's original timestamp, restore both prior volumes, mute states and speeds and
+  continue playing. Near A's beginning the rewind stops at zero. Press H again to
+  end replay early. Manual transport, speed, offset or volume edits, and replacing
+  media, restore the saved state first. Fullscreen/layout changes do not cancel it.
+- **Shift + mouse wheel over video**: adjust only that video's volume, five
+  percentage points per notch, clamped to 0–100%. Works in fullscreen. Overlapping
+  regions target the visible foreground source. Volume sliders remain synchronized.
+- **Opposite reaction edge**: source at the top anchors the cropped reaction to the
+  bottom; source at the bottom anchors it to the top. Cropping keeps that anchor.
+  Existing manual pan remains available as an adjustment within the mask.
+
+Session/source/layout persistence and UI polish remain later work.
+
+### Audio-assisted alignment
 
 Milestone 8 is confirmed on Gonz's PC: YouTube now loads, cropping starts at zero,
 and B waits at its first frame during the reaction preamble. YouTube buffering
@@ -12,7 +35,7 @@ Windows testing; a real-media confirmation remains useful.
 
 ### Find audio sync
 
-Position both players near the same shared scene, within roughly 30 seconds of
+Position both players near the same shared scene, within roughly 60 seconds of
 alignment. Choose **Find audio sync… → Analyze audio**. The app reads 20 seconds
 of Reaction A and searches nearby Source B audio using the selected audio tracks.
 Clear shared music/dialogue works best; heavy commentary, different edits, dubbing,
@@ -273,7 +296,7 @@ Windows checks include automatic boundary crossing, seeking into/out of preamble
 and discussion, pause/speed behavior while B is held, and diagnostic redaction.
 A separate live public YouTube extraction probe records service behavior from CI;
 CI may face restrictions different from the user's PC. Gonz has now confirmed
-YouTube loading; milestone 9 audio-assisted alignment is awaiting his test.
+YouTube loading; milestone 9 audio-assisted alignment is confirmed.
 
 
 Milestone 9 checks noisy/echoed audio matching, positive and negative offsets,
@@ -286,3 +309,6 @@ Verified downloads normally use Actions artifacts (seven-day retention). If stor
 is full, a push to the rebuild branch can attach the tested ZIP to a **draft release**
 instead. Existing artifacts are not removed automatically. Draft downloads require
 repository access and do not publish a public release.
+
+Milestone 10 tests exact replay state restoration, beginning clamping, cancellation,
+replacement, opposite-edge cropping and independent/fullscreen wheel volume.

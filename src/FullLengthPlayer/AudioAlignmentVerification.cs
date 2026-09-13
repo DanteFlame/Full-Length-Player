@@ -8,9 +8,9 @@ internal static class AudioAlignmentVerification
         const int rate = AudioAlignment.Rate;
         var random = new Random(8271);
         // Changing multi-band tones: deterministic musical-like content, not a periodic sine.
-        double[,] levels = new double[400, 6];
-        for (int i = 0; i < 400; i++) for (int j = 0; j < 6; j++) levels[i, j] = random.NextDouble();
-        short[] source = new short[45 * rate];
+        double[,] levels = new double[1200, 6];
+        for (int i = 0; i < 1200; i++) for (int j = 0; j < 6; j++) levels[i, j] = random.NextDouble();
+        short[] source = new short[120 * rate];
         double[] frequencies = { 250, 480, 850, 1400, 2150, 2600 };
         for (int i = 0; i < source.Length; i++)
         {
@@ -30,6 +30,9 @@ internal static class AudioAlignmentVerification
         }
         var direct = AudioAlignment.Match(reaction[..(20 * rate)], source, 0, 0, CancellationToken.None);
         Check(direct.Reliable && Math.Abs(direct.Offset - 7.35) < 0.051, $"Failed room/noise/volume match: {direct}.");
+        // A match 55 seconds beyond the estimated B playhead is inside the expanded radius.
+        var wide = AudioAlignment.Match(source[(65 * rate + 2800)..(85 * rate + 2800)], source, 0, 0, CancellationToken.None);
+        Check(wide.Reliable && Math.Abs(wide.Offset - 65.35) < 0.051, "Expanded search missed a distant match.");
         var negative = AudioAlignment.Match(reaction[..(20 * rate)], source, 100, 50, CancellationToken.None);
         Check(negative.Reliable && Math.Abs(negative.Offset + 42.65) < 0.051, "Wrong negative offset sign.");
         Check(!AudioAlignment.Match(new short[20 * rate], new short[40 * rate], 0, 0, CancellationToken.None).Reliable, "Silence must not suggest alignment.");

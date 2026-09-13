@@ -49,8 +49,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = 'milestone-9-preview-' + '${{ github.sha }}'.Substring(0, 12)
-          gh release create $tag 'publish/FullLengthPlayer-win-x64.zip' --draft --target '${{ github.sha }}' --title 'Milestone 9 audio sync — Windows test build' --notes 'Experimental nearby audio alignment. Windows launch and playback checks passed. Position both clips near the same scene, choose Find audio sync, Analyze audio, then Apply and lock if a clear match is found. This draft is for user testing; milestone 9 is not yet accepted.'
+          $tag = 'milestone-10-preview-' + '${{ github.sha }}'.Substring(0, 12)
+          gh release create $tag 'publish/FullLengthPlayer-win-x64.zip' --draft --target '${{ github.sha }}' --title 'Milestone 10 commentary replay — Windows test build' --notes 'Windows tests passed. Adds H commentary replay, Shift+scroll volume over videos, opposite-edge reaction anchoring and a 60-second audio search radius. This draft is for user testing; milestone 10 is not yet accepted.'
           if ($LASTEXITCODE -ne 0) { throw 'Draft download creation failed.' }
       - name: Collect startup diagnostics
         if: always()

@@ -14,6 +14,16 @@ internal sealed class PlayerPane : UserControl
     private readonly TrackBar volume = new() { Minimum = 0, Maximum = 100, Value = 100, Width = 120, Height = 28, TickStyle = TickStyle.None };
     private string? playbackError;
     private bool dragging;
+    private bool updatingVolume;
+    internal event Action? VolumeEdited;
+    internal double Volume => Player?.Number("volume") ?? volume.Value;
+    internal void SetVolume(double value)
+    {
+        Player?.Set("volume", Math.Clamp(value, 0, 100).ToString(CultureInfo.InvariantCulture));
+        updatingVolume = true;
+        try { volume.Value = (int)Math.Round(Math.Clamp(value, 0, 100)); } finally { updatingVolume = false; }
+    }
+    internal void AdjustVolume(int delta) { VolumeEdited?.Invoke(); SetVolume(Volume + delta); }
     private bool network;
     private AudioInput? analysisInput;
     internal AudioInput CaptureAudio() => analysisInput is { } input && Player?.Get("aid") is { } aid && aid != "no"
@@ -59,7 +69,7 @@ internal sealed class PlayerPane : UserControl
         subtitles.DropDownOpening += (_, _) => RefreshTrackMenu(true);
         var mixer = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 32, BackColor = SystemColors.Control, WrapContents = false };
         mixer.Controls.Add(new Label { Text = "Volume", AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
-        volume.ValueChanged += (_, _) => Execute(() => Player?.Set("volume", volume.Value.ToString(CultureInfo.InvariantCulture)));
+        volume.ValueChanged += (_, _) => { if (!updatingVolume) Execute(() => { int desired = volume.Value; VolumeEdited?.Invoke(); SetVolume(desired); }); };
         mixer.Controls.Add(volume);
         Controls.Add(video);
         Controls.Add(timeline);
