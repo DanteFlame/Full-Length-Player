@@ -148,13 +148,13 @@ changes preserve the stored offset. Each pane shows its own current speed.
 | F1 / F2 | Choose the fallback player when the pointer is outside both panes |
 | Ctrl+O | Open media in the explicitly selected player |
 
-Ordinary keys always target both players. Independent pause/seek
+Transport and speed keys target both players by default. Independent pause/seek
 changes unlock sync. Speed always affects both, even with Shift held.
 Track menus and the offset numeric field retain normal keyboard editing/navigation.
 
 **Favorite settings** changes the favorite (default 2×), saved to
 `%LOCALAPPDATA%/FullLengthPlayer/preferences.json`. Session media/offset/layout saving
-is still future work. **H** is reserved for “What Did They Say?” and is not active.
+is still future work. **H** now triggers “What Did They Say?” (see above).
 
 
 A/G remember the actual speed on entering that toggle. Repeating the same key
