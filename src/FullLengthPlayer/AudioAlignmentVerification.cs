@@ -66,6 +66,11 @@ internal static class AudioAlignmentVerification
             Check(decoded.Reliable && Math.Abs(decoded.Offset - 7.35) < 0.051, "Native decoded samples lost timestamp alignment.");
             var consensus = await AudioConsensus.Run(Input("reaction.wav"), Input("source.wav"), 0, 0, 100, 120, new Progress<string>(), CancellationToken.None);
             Check(consensus.Match is { } agreed && Math.Abs(agreed.Offset - 7.35) < 0.051 && consensus.Agreed >= 3, "Native multi-sample agreement failed or exceeded budget.");
+            var obscured = (short[])reaction.Clone();
+            for (int i = 20 * rate; i < obscured.Length; i++) obscured[i] = (short)random.Next(-15000, 15000);
+            Wave("commentary.wav", obscured);
+            var fallback = await AudioConsensus.Run(Input("commentary.wav"), Input("source.wav"), 0, 0, 100, 120, new Progress<string>(), CancellationToken.None);
+            Check(fallback.Match is { } candidate && Math.Abs(candidate.Offset - 7.35) < 0.051 && fallback.Agreed == 1, "Commentary erased the initial clear match.");
             try { await AudioAlignment.Decode(Input("source.wav"), 0, 20, canceled.Token); throw new InvalidOperationException("Decode cancellation ignored."); }
             catch (OperationCanceledException) { }
         }

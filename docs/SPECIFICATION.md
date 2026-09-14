@@ -323,3 +323,16 @@ Multi-sample audio alignment checks separate 20-second sections up to ten minute
 ahead with ±60-second searches. Require three strong matches agreeing within .10 s;
 use median rounded to .05 s. Reject conflicting strong matches, stop early, use an
 approximately ten-second processing budget, and retain optional single-sample mode.
+
+
+## Milestone 11 user test and audio refinement
+
+Gonz confirmed automatic 4:3 selection, fullscreen HUD/cursor hiding, correct skip
+labels and both directions of continued end playback. Multi-sampling was less
+helpful than the single check with commentary; checkbox was clipped by instructions.
+Use a resizable row-based dialog. Retain a strong single-sample candidate when later
+samples are weak, clearly label it unconfirmed, corroborate with two agreeing samples
+and stop early at three. Strong contradictions still block application. Spread the
+sample order across the available next ten minutes, use distinct non-overlapping
+20-second blocks, and retain the ten-second budget and existing match thresholds.
+This supersedes the earlier requirement to discard every result below three matches.

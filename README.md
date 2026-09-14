@@ -3,7 +3,23 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 11 — fullscreen viewing and complete playback
+## Current build: milestone 11 — audio matching refinement
+
+Gonz confirmed automatic canvas selection, fullscreen timeline/cursor hiding,
+five-second skips and either video continuing after the other ends. The remaining
+refinements are the audio dialog and handling of commentary-heavy samples.
+
+The audio dialog now uses a resizable layout with separate rows for instructions,
+checkbox, result and buttons, avoiding overlap at larger display scaling.
+Multi-sampling starts with the same sample as the single check, then visits widely
+spaced sections across the available next ten minutes. It skips overlapping samples.
+A good initial result is retained if other sections are weak: the dialog explicitly
+labels it **Single-sample candidate**, not consensus. Two agreeing strong results
+are corroborated; three allow an early finish. Strong conflicting offsets still
+block applying a result. Match thresholds and the approximate ten-second budget
+are unchanged. Single-sample mode remains available.
+
+### Fullscreen viewing and complete playback
 
 Milestones 0–10 are confirmed on Gonz's PC and merged into `main`; new development
 uses small feature branches. The old LibVLC implementation remains in Git history.
@@ -21,9 +37,10 @@ uses small feature branches. The old LibVLC implementation remains in Git histor
   remains B−A; clock labels show elapsed time across the whole combined span.
 - Audio sync defaults to multiple distinct 20-second samples across up to the next
   ten minutes, searching ±60 seconds around the estimated alignment for each.
-  Three strong matches agreeing within 0.10 seconds produce a median on the 0.05
-  grid. Conflicting strong matches are reported, never averaged. It stops early
-  on agreement/conflict or after an approximately ten-second budget. Slow network
+  Agreeing strong matches within 0.10 seconds produce a median on the 0.05
+  grid. A lone strong match is labelled as an unconfirmed candidate. Conflicting
+  strong matches are reported, never averaged. It stops early on three agreeing
+  samples or after an approximately ten-second budget. Slow network
   cancellation/cleanup can take longer. Uncheck multiple samples for the original
   single-sample check; short remaining clips may not provide enough samples.
 

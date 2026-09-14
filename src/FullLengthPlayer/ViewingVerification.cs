@@ -50,7 +50,26 @@ internal static class ViewingVerification
         form.ToggleFullscreen(); Check(!form.Hud.Visible, "HUD remained after fullscreen.");
         var agree = new[] { new AudioMatch(5.0,0.6,0.2,true), new AudioMatch(5.05,0.7,0.3,true), new AudioMatch(5.0,0.6,0.2,true) };
         Check(AudioConsensus.Decide(agree,3).Match?.Offset == 5, "Consensus median wrong.");
-        Check(AudioConsensus.Decide(agree.Take(2).ToArray(),2).Match == null, "Two samples cannot establish consensus.");
+        Check(AudioConsensus.Decide(agree.Take(2).ToArray(),2).Match != null, "Two agreeing samples should corroborate a candidate.");
+        var weak = new AudioMatch(99,0.1,0.01,false);
+        Check(AudioConsensus.Decide(new[] { agree[0], weak, weak },3).Match?.Offset == 5 && AudioConsensus.Decide(new[] { agree[0], weak },2).Agreed == 1, "Weak samples erased a strong candidate.");
+        Check(AudioConsensus.Decide(new[] { weak, weak },2).Match == null, "Weak evidence became a candidate.");
+        var plan = AudioConsensus.SampleAdvances(600);
+        Check(plan[0] == 0 && plan[1] >= 200 && plan[2] >= 500, "Samples are not spread out.");
+        Check(plan.All(x => plan.All(y => x == y || Math.Abs(x-y) >= 20)), "Overlapping samples count as independent evidence.");
+        Check(AudioConsensus.SampleAdvances(20).SequenceEqual(new[] {0.0}), "Short clip plan failed.");
+        using (var dialog = new AudioSyncDialog(form.Reaction.CaptureAudio(), form.Source.CaptureAudio(), 0, 0, 40, 40))
+        {
+            dialog.Show(form); dialog.PerformLayout();
+            foreach (float scale in new[] {1f, 1.5f, 4f/3f})
+            {
+                dialog.Scale(new SizeF(scale, scale)); dialog.PerformLayout();
+                var check = dialog.MultipleSamples.RectangleToScreen(dialog.MultipleSamples.ClientRectangle);
+                var instructions = dialog.Instructions.RectangleToScreen(dialog.Instructions.ClientRectangle);
+                Check(!check.IntersectsWith(instructions) && dialog.RectangleToScreen(dialog.ClientRectangle).Contains(check), "Audio dialog clips its checkbox.");
+            }
+            dialog.Close();
+        }
         Check(AudioConsensus.Decide(agree.Append(new AudioMatch(8,0.8,0.3,true)).ToArray(),4).Conflict, "Conflicting offsets were averaged.");
         using var token = new CancellationTokenSource(); token.Cancel();
         try { await AudioConsensus.Run(form.Reaction.CaptureAudio(),form.Source.CaptureAudio(),0,0,40,40,new Progress<string>(),token.Token); throw new InvalidOperationException("Consensus ignored cancellation."); }
