@@ -53,7 +53,7 @@ internal sealed class NetworkSourceDialog : Form
         LabelAt("YouTube video link or direct media / .m3u8 URL (not a Patreon post)", 18);
         LabelAt("Referer (editable; leave blank for streams that do not need it)", 106);
         LabelAt("Optional HTTP headers — one Name: value per line", 160);
-        LabelAt("URLs and headers are used for this load only; they are not saved to disk.", 285);
+        LabelAt("Saved sessions protect stream URLs and headers with your Windows account.", 285);
         Controls.AddRange(new Control[] { url, patreon, referer, headers, open, cancel });
         url.TextChanged += (_, _) =>
         {

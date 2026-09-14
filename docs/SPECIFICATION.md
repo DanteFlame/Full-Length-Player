@@ -336,3 +336,16 @@ and stop early at three. Strong contradictions still block application. Spread t
 sample order across the available next ten minutes, use distinct non-overlapping
 20-second blocks, and retain the ten-second budget and existing match thresholds.
 This supersedes the earlier requirement to discard every result below three matches.
+
+
+## Milestone 12: saved settings and sessions
+
+The user accepted milestone 11 audio matching and dialog sizing; leave matching
+unchanged. Persist general layout, audio levels/mutes and shared speed on exit.
+Keep automatic closest-display canvas at startup. Explicit resume/open restores
+a paired session including its own canvas, positions, offset and embedded tracks.
+Resume is explicit and always paused; wait for new file-loaded events before seeking.
+Save original YouTube links and resolve afresh; expired direct links need replacing.
+Media URLs/headers are now persisted only within Windows DPAPI protected sessions,
+superseding milestone 7's temporary no-persistence restriction. Never log them.
+External subtitle files and portable session sharing remain outside this milestone.

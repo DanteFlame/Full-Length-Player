@@ -3,25 +3,44 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 11 — audio matching refinement
+## Current build: milestone 12 — saved settings and sessions
 
-Gonz confirmed automatic canvas selection, fullscreen timeline/cursor hiding,
-five-second skips and either video continuing after the other ends. The remaining
-refinements are the audio dialog and handling of commentary-heavy samples.
+Milestone 11 audio matching and dialog fixes are confirmed on Gonz's PC and merged
+into `main`. Audio matching stays unchanged in this milestone.
 
-The audio dialog now uses a resizable layout with separate rows for instructions,
-checkbox, result and buttons, avoiding overlap at larger display scaling.
-Multi-sampling starts with the same sample as the single check, then visits widely
-spaced sections across the available next ten minutes. It skips overlapping samples.
-A good initial result is retained if other sections are weak: the dialog explicitly
-labels it **Single-sample candidate**, not consensus. Two agreeing strong results
-are corroborated; three allow an early finish. Strong conflicting offsets still
-block applying a result. Match thresholds and the approximate ten-second budget
-are unchanged. Single-sample mode remains available.
+- Closing the app remembers crop, pan, zoom, source size/edge, volumes, mute states
+  and shared playback speed. Startup still chooses the canvas closest to the display.
+- **Resume last session** reopens the last complete video pairing saved on exit.
+- **Save session… / Open session…** keep named pairings, including positions,
+  the locked offset, layout, canvas, audio/subtitle selections, volumes and speed.
+- Restoring waits for both media files and leaves both players **paused**.
+  A named session or resume restores its saved canvas, overriding the startup choice.
+- YouTube sessions retain the original video link and resolve fresh playback URLs.
+  Expired Patreon/CDN links need replacing using Open URL. Missing local files need
+  returning to their saved paths or reopening manually.
+- External subtitle files are not restored yet; embedded track selections are.
+  Re-add external subtitles after resuming.
+
+Settings live in `%LOCALAPPDATA%/FullLengthPlayer/view-settings.json`; the last
+pairing lives in `last-session.flpsession` there. Sessions can contain signed URLs
+and HTTP headers, so the entire session is encrypted using Windows DPAPI. Named
+`.flpsession` files and the last session are intended for the same Windows account
+on the same PC, not portable sharing. Ordinary view settings contain no media URLs.
+Opening the app does not automatically load streams: press Resume when ready.
+Saving during “What Did They Say?” first restores your normal viewing settings.
+
+### Milestone 12 check on your PC
+
+1. Load a pair, lock alignment, choose tracks, and adjust layout, volumes and speed.
+2. Save a named session, seek elsewhere, then open it; check both resume paused at
+   the saved alignment with the saved settings.
+3. Close and reopen the app. Check remembered settings and automatic display canvas,
+   then press Resume last session and check the pairing and positions.
+4. Try a YouTube or Patreon/local pairing. Expired links may need refreshing.
 
 ### Fullscreen viewing and complete playback
 
-Milestones 0–10 are confirmed on Gonz's PC and merged into `main`; new development
+Milestones 0–11 are confirmed on Gonz's PC and merged into `main`; new development
 uses small feature branches. The old LibVLC implementation remains in Git history.
 
 - At startup, choose the closest fixed canvas (16:9, 4:3 or 16:10) to the display
@@ -65,7 +84,7 @@ cleaner reaction scene. Move A to clearer shared audio if commentary overwhelms 
   bottom; source at the bottom anchors it to the top. Cropping keeps that anchor.
   Existing manual pan remains available as an adjustment within the mask.
 
-Session/source/layout persistence and UI polish remain later work.
+Milestone 12 adds session persistence; reusable presets and UI polish remain later work.
 
 ### Audio-assisted alignment
 
@@ -143,7 +162,7 @@ Patreon requires a direct media URL, not a post page. The Patreon path does not
 extract links or sign in. YouTube video links use the separate resolver described above. Signed media URLs may expire;
 use **Open URL** again with a fresh authorized URL when needed. 
 
-URLs and headers are not persisted or written to application logs. They are cleared
+URLs and headers are protected inside saved sessions and are not written to application logs. They are cleared
 on each replacement load and do not transfer to the other player. Network failures
 show a retry message without the URL or header values. HTTPS certificate checking
 stays enabled. Existing file open controls remain available.
@@ -166,7 +185,7 @@ controls for both players remain below the composition.
 
 **F or F11** enters a clean fullscreen composition; **Esc**, F or F11 returns to the
 previous window. Playback shortcuts remain available in fullscreen. Layout settings
-are session-only for now. Cropping can hide parts of reaction subtitles; source
+are remembered by milestone 12 settings and sessions. Cropping can hide parts of reaction subtitles; source
 subtitles stay inside the foreground video.
 
 ### Playback speed and keys

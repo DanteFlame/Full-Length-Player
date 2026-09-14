@@ -1,6 +1,6 @@
 namespace FullLengthPlayer;
 
-internal sealed class MainForm : Form, IMessageFilter
+internal sealed partial class MainForm : Form, IMessageFilter
 {
     internal PlayerPane Reaction { get; } = new("Reaction A");
     internal PlayerPane Source { get; } = new("Source B");
@@ -137,6 +137,7 @@ internal sealed class MainForm : Form, IMessageFilter
         Controls.Add(masterStatus);
         Controls.Add(syncBar);
         Controls.Add(masterBar);
+        BuildSessionControls();
         Controls.Add(Hud);
         Hud.Seek += fraction => RunMaster(() => Master.SeekReaction(Master.TimelineStart + (Master.TimelineEnd - Master.TimelineStart) * fraction));
         Hud.Activity += RevealFullscreen;
@@ -159,6 +160,7 @@ internal sealed class MainForm : Form, IMessageFilter
         {
             var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
             bool verify = args.Length == 3 && args[0] == "--verify-playback";
+            verificationMode = verify;
             try
             {
                 canvasChoice!.SelectedIndex = ClosestCanvas(Screen.FromControl(this).Bounds.Size);
@@ -168,6 +170,7 @@ internal sealed class MainForm : Form, IMessageFilter
                 if (verify) await PlaybackVerification.Run(this, args[1], args[2]);
                 else
                 {
+                    if (SessionStore.ReadSettings() is { } saved) ApplySettings(saved, restoreCanvas: false);
                     if (args.Length >= 1) Reaction.LoadVideo(args[0]);
                     if (args.Length >= 2) Source.LoadVideo(args[1]);
                 }
@@ -200,7 +203,7 @@ internal sealed class MainForm : Form, IMessageFilter
             var box = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90 };
             box.Items.AddRange(choices); box.SelectedIndex = 0;
             box.SelectedIndexChanged += (_, _) => { change(box.SelectedIndex); Composition.Arrange(); };
-            compositionBar.Controls.Add(box); return box;
+            compositionBar.Controls.Add(box); layoutInputs[label] = box; return box;
         }
         canvasChoice = Choice("Canvas", new[] { "16:9", "4:3", "16:10" }, i => Composition.CanvasAspect = i switch { 0 => 16.0 / 9, 1 => 4.0 / 3, _ => 16.0 / 10 });
         Choice("Source edge", new[] { "Bottom", "Top" }, i => Composition.TopAnchor = i == 1);
@@ -209,7 +212,7 @@ internal sealed class MainForm : Form, IMessageFilter
             compositionBar.Controls.Add(new Label { Text = label, AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
             var input = new NumericUpDown { Width = 55, Minimum = min, Maximum = max, Value = value };
             input.ValueChanged += (_, _) => { change((double)input.Value / 100); Composition.Arrange(); };
-            compositionBar.Controls.Add(input); return input;
+            compositionBar.Controls.Add(input); layoutInputs[label] = input; return input;
         }
         var size = Number("Source %", 70, 15, 100, v => Composition.SourceFraction = v);
         Composition.ResizedSource += () => size.Value = Math.Clamp((decimal)Math.Round(Composition.SourceFraction * 100), 15, 100);
@@ -238,7 +241,7 @@ internal sealed class MainForm : Form, IMessageFilter
             FormBorderStyle = FormBorderStyle.Sizable;
             Bounds = windowBounds; WindowState = previousState;
         }
-        foreach (Control control in new Control[] { masterBar, syncBar, masterStatus, masterTimeline, compositionBar, playerControls, info }) control.Visible = !Fullscreen;
+        foreach (Control control in new Control[] { sessionBar, masterBar, syncBar, masterStatus, masterTimeline, compositionBar, playerControls, info }) control.Visible = !Fullscreen;
         Composition.ShowHandles = !Fullscreen;
         ActiveControl = null;
         ResumeLayout(true); Composition.Arrange();
@@ -300,6 +303,7 @@ internal sealed class MainForm : Form, IMessageFilter
     }
     internal bool HandleShortcut(Keys keyData, Point cursor)
     {
+        if (restoringSession) return true;
         bool shift = (keyData & Keys.Modifiers) == Keys.Shift;
         Keys key = keyData & Keys.KeyCode;
         if (keyData == Keys.F1) { SelectPane(Reaction); return true; }
@@ -368,6 +372,7 @@ internal sealed class MainForm : Form, IMessageFilter
     }
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        SaveOnExit();
         if (cursorHidden) { Cursor.Show(); cursorHidden = false; }
         Application.RemoveMessageFilter(this);
         Replay.Cancel();
