@@ -19,8 +19,29 @@ internal static class AppIcons
     {
         if (!Ids.Contains(id)) throw new ArgumentException("Unknown icon.");
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("FullLengthPlayer.Icons." + id + ".ico") ?? throw new InvalidOperationException("Bundled icon missing.");
-        using var icon = new Icon(stream, new Size(size,size));
-        return (Icon)icon.Clone();
+        // ICO stores 256 as zero in its directory. Select the frame explicitly so
+        // System.Drawing cannot mistake that entry for a zero-pixel candidate.
+        using var memory = new MemoryStream(); stream.CopyTo(memory); byte[] bytes = memory.ToArray();
+        int count = BitConverter.ToUInt16(bytes,4);
+        for (int i = 0; i < count; i++)
+        {
+            int entry = 6 + 16 * i;
+            int width = bytes[entry] == 0 ? 256 : bytes[entry];
+            int height = bytes[entry+1] == 0 ? 256 : bytes[entry+1];
+            if (width != size || height != size) continue;
+            int length = checked((int)BitConverter.ToUInt32(bytes,entry+8));
+            int offset = checked((int)BitConverter.ToUInt32(bytes,entry+12));
+            using var selected = new MemoryStream();
+            using (var writer = new BinaryWriter(selected, System.Text.Encoding.UTF8, leaveOpen:true))
+            {
+                writer.Write((ushort)0); writer.Write((ushort)1); writer.Write((ushort)1);
+                writer.Write(bytes,entry,12); writer.Write(22); writer.Write(bytes,offset,length);
+            }
+            selected.Position = 0;
+            using var icon = new Icon(selected, new Size(size,size));
+            return (Icon)icon.Clone();
+        }
+        throw new InvalidOperationException("Bundled icon size missing.");
     }
 }
 internal sealed partial class MainForm
