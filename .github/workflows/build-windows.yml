@@ -45,12 +45,12 @@ jobs:
           path: publish/FullLengthPlayer-win-x64.zip
           if-no-files-found: error
       - name: Draft preview download if artifact storage is unavailable
-        if: steps.application.outcome == 'failure' && github.event_name == 'push' && github.ref == 'refs/heads/rebuild/mpv-milestone-0'
+        if: steps.application.outcome == 'failure' && github.event_name == 'push' && github.ref == 'refs/heads/feature/milestone-11'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = 'milestone-10-preview-' + '${{ github.sha }}'.Substring(0, 12)
-          gh release create $tag 'publish/FullLengthPlayer-win-x64.zip' --draft --target '${{ github.sha }}' --title 'Milestone 10 commentary replay — Windows test build' --notes 'Windows tests passed. Adds H commentary replay, Shift+scroll volume over videos, opposite-edge reaction anchoring and a 60-second audio search radius. This draft is for user testing; milestone 10 is not yet accepted.'
+          $tag = 'milestone-11-preview-' + '${{ github.sha }}'.Substring(0, 12)
+          gh release create $tag 'publish/FullLengthPlayer-win-x64.zip' --draft --target '${{ github.sha }}' --title 'Milestone 11 audio refinements — Windows test build' --notes 'Windows tests passed. Fixes audio dialog layout and retains clearly labelled single-sample candidates when other samples are weak, with widely spaced multi-sampling. This draft is for user testing; milestone 11 is not yet accepted.'
           if ($LASTEXITCODE -ne 0) { throw 'Draft download creation failed.' }
       - name: Collect startup diagnostics
         if: always()

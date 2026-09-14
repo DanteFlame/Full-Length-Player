@@ -19,13 +19,17 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     private readonly SeekCoordinator seeks = new();
     internal bool SeekingTogether => seeks.Waiting;
     private long nextCorrection;
-    private bool sourceHeld;
+    private bool sourceHeld, reactionHeld;
+    internal double TimelineStart => Locked ? Math.Min(0, -Offset) : 0;
+    internal double TimelineEnd => Snapshot() is { } p ? (Locked ? Math.Max(p.ADuration, p.BDuration - Offset) : p.ADuration) : 0;
+    internal double TimelineTime => Snapshot() is { } p ? Clock(p) : 0;
+    private double Clock(Position p) => Locked && reactionHeld ? p.BTime - Offset : p.ATime;
     internal void SetSpeed(double speed)
     {
         if (!double.IsFinite(speed) || speed < SpeedControl.Minimum || speed > SpeedControl.Maximum) throw new ArgumentOutOfRangeException(nameof(speed));
         var p = Snapshot() ?? throw new InvalidOperationException("Load both videos first.");
         // Holding the pair through a locked change also preserves the stored offset.
-        if (Locked) SeekLocked(p, seeks.ATarget ?? p.ATime);
+        if (Locked) SeekLocked(p, seeks.ATarget is { } pending ? (reactionHeld ? seeks.BTarget!.Value - Offset : pending) : Clock(p));
         string value = speed.ToString(CultureInfo.InvariantCulture);
         p.A.Set("speed", value); p.B.Set("speed", value);
         Settle();
@@ -34,7 +38,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     private void Settle() => nextCorrection = Environment.TickCount64 + 2000;
     internal void Unlock(string reason = "Unlocked — align videos, then lock")
     {
-        seeks.Cancel(); sourceHeld = false; Locked = false; Drift = null; SyncStatus = reason;
+        seeks.Cancel(); sourceHeld = reactionHeld = false; Locked = false; Drift = null; SyncStatus = reason;
     }
     internal void CaptureAlignment()
     {
@@ -56,8 +60,9 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
             throw new InvalidOperationException("Set a shared speed before locking differently paced videos.");
         if (Math.Max(0, -seconds) >= Math.Min(p.ADuration, p.BDuration - seconds))
             throw new InvalidOperationException("That offset leaves no shared playable range.");
+        double clock = Clock(p);
         Offset = seconds; Locked = true;
-        SeekLocked(p, p.ATime);
+        SeekLocked(p, clock);
     }
     internal void Nudge(double seconds) => SetOffset((Locked ? Offset : (Snapshot() is { } p ? p.BTime - p.ATime : 0)) + seconds);
     private static bool Busy(Position p) => p.A.Get("seeking") == "yes" || p.B.Get("seeking") == "yes"
@@ -72,7 +77,19 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         if (!Locked) return;
         var p = Snapshot();
         if (p == null) { SyncStatus = "Waiting for media"; return; }
-        double target = p.ATime + Offset;
+        // Once A ends, B becomes the clock while its remaining content plays.
+        if (!reactionHeld && p.A.Get("eof-reached") == "yes" && p.BTime < p.BDuration - 0.12 && p.BTime - Offset >= p.ADuration - 0.12)
+            reactionHeld = true;
+        double clock = Clock(p);
+        bool outsideA = clock < 0 || clock >= p.ADuration - (p.A.Get("eof-reached") == "yes" ? 0.12 : 0);
+        if (reactionHeld)
+        {
+            if (!outsideA) { reactionHeld = false; SeekLocked(p, clock); return; }
+            p.A.Set("pause", "yes"); Drift = null;
+            SyncStatus = clock < 0 ? "Locked — reaction waiting at start" : "Locked — reaction ended; source continues";
+            return;
+        }
+        double target = clock + Offset;
         bool before = target < 0;
         bool after = target >= p.BDuration || (p.B.Get("eof-reached") == "yes" && target >= p.BDuration - 0.12);
         if (before || after)
@@ -120,10 +137,11 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     }
     private void SeekLocked(Position p, double reactionTime)
     {
-        double target = Math.Clamp(reactionTime, 0, p.ADuration);
+        double target = Math.Clamp(reactionTime, TimelineStart, Math.Max(p.ADuration, p.BDuration - Offset));
         double sourceTarget = target + Offset;
         sourceHeld = sourceTarget < 0 || sourceTarget >= p.BDuration;
-        seeks.Begin(p, target, Math.Clamp(sourceTarget, 0, p.BDuration), followReaction: true, holdSource: sourceHeld);
+        reactionHeld = target < 0 || target >= p.ADuration;
+        seeks.Begin(p, Math.Clamp(target, 0, p.ADuration), Math.Clamp(sourceTarget, 0, p.BDuration), followReaction: true, holdSource: sourceHeld, holdReaction: reactionHeld);
         SyncStatus = "Locked — settling after seek"; Settle();
     }
     internal sealed record Position(MpvPlayer A, MpvPlayer B, double ATime, double BTime, double ADuration, double BDuration);
@@ -142,9 +160,10 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         if (seeks.Waiting) { seeks.TogglePause(); return; }
         var p = Snapshot(); if (p == null) return;
         // Mixed states converge to paused; pressing again starts both.
-        string state = (Locked ? p.A.Get("pause") != "yes" : p.A.Get("pause") != "yes" || p.B.Get("pause") != "yes") ? "yes" : "no";
-        p.A.Set("pause", state);
-        bool hold = Locked && (p.ATime + Offset < 0 || p.ATime + Offset >= p.BDuration);
+        string state = (p.A.Get("pause") != "yes" || p.B.Get("pause") != "yes") ? "yes" : "no";
+        double clock = Clock(p);
+        p.A.Set("pause", Locked && (clock < 0 || clock >= p.ADuration) ? "yes" : state);
+        bool hold = Locked && (clock + Offset < 0 || clock + Offset >= p.BDuration);
         p.B.Set("pause", hold ? "yes" : state);
         Settle();
     }
@@ -154,12 +173,13 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     }
     internal void SeekReaction(double seconds)
     {
-        var p = Snapshot(); if (p != null) Move(p, seconds - (seeks.ATarget ?? p.ATime));
+        var p = Snapshot(); if (p != null) Move(p, seconds - PendingClock(p));
     }
+    private double PendingClock(Position p) => seeks.ATarget is { } at ? (reactionHeld ? seeks.BTarget!.Value - Offset : at) : Clock(p);
     private void Move(Position p, double delta)
     {
         if (!double.IsFinite(delta)) return;
-        if (Locked) { SeekLocked(p, (seeks.ATarget ?? p.ATime) + delta); return; }
+        if (Locked) { SeekLocked(p, PendingClock(p) + delta); return; }
         if (seeks.ATarget is { } pendingA && seeks.BTarget is { } pendingB)
             p = p with { ATime = pendingA, BTime = pendingB };
         // Move by the same amount, limiting the pair at either file's start/end.

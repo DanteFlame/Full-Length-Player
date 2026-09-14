@@ -131,7 +131,7 @@ internal static class PlaybackVerification
         form.Master.SeekReaction(0);
         await Until(() => a.Number("time-pos") < 0.1 && b.Number("time-pos") < 0.1, "Full reaction start must remain accessible.");
         form.Master.SeekReaction(100);
-        await Until(() => a.Number("time-pos") > 39.7 && Math.Abs(b.Number("time-pos") - 37) < 0.1, "Negative-offset end boundary failed.");
+        await Until(() => a.Number("time-pos") > 39.7 && b.Number("time-pos") > 39.7, "Full combined end boundary failed.");
         form.Master.SeekReaction(10);
         await Until(() => Math.Abs(a.Number("time-pos") - 10) < 0.1 && Math.Abs(b.Number("time-pos") - 7) < 0.1, "Negative-offset seek back failed.");
         bool invalidRejected = false;
@@ -158,7 +158,7 @@ internal static class PlaybackVerification
         form.Reaction.LoadVideo(media);
         Assert(!form.Master.Locked, "Replacing media must invalidate the lock.");
         // Milestone 5: exercise the real keyboard dispatcher and native speed properties.
-        await Until(() => a.Number("time-pos") > 0.3 && a.Get("seeking") == "no", "Reload not ready for speed test.");
+        await Until(() => a.Number("time-pos") > 0.3 && a.Number("time-pos") < 3 && a.Get("seeking") == "no" && a.Get("idle-active") == "no", "Reload not ready for speed test.");
         a.Set("pause", "yes"); b.Set("pause", "yes");
         a.Command("seek", "8", "absolute+exact"); b.Command("seek", "12", "absolute+exact");
         await Until(() => Math.Abs(a.Number("time-pos") - 8) < 0.1 && Math.Abs(b.Number("time-pos") - 12) < 0.1 && a.Get("seeking") == "no" && b.Get("seeking") == "no", "Speed test alignment failed.");
@@ -275,7 +275,8 @@ internal static class PlaybackVerification
         await BoundaryVerification.Run(form);
         await AudioAlignmentVerification.Run();
         await ConvenienceVerification.Run(form, media);
-        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 10, commentaryReplay = true, hoverVolumeWheel = true, oppositeReactionAnchor = true, audioAlignment = true, reactionPreambleAndDiscussion = true, youtubeDiagnostics = true, youtubeResolver = true, separateYouTubeAudio = true, offsetGrid005 = true, hlsPlayback = true, httpHeaderIsolation = true, hlsSharedSeek = true, httpFailureRecovery = true, canvas16x10 = true, composition = true, fullscreen = true, sharedShiftSpeed = true, nativeSurfaceRetention = true, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
+        await ViewingVerification.Run(form, media);
+        File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, milestone = 11, unionTimeline = true, fullscreenHud = true, audioConsensus = true, commentaryReplay = true, hoverVolumeWheel = true, oppositeReactionAnchor = true, audioAlignment = true, reactionPreambleAndDiscussion = true, youtubeDiagnostics = true, youtubeResolver = true, separateYouTubeAudio = true, offsetGrid005 = true, hlsPlayback = true, httpHeaderIsolation = true, hlsSharedSeek = true, httpFailureRecovery = true, canvas16x10 = true, composition = true, fullscreen = true, sharedShiftSpeed = true, nativeSurfaceRetention = true, sharedSpeed = true, speedToggles = true, hoverTargeting = true, coordinatedSeekResume = true, rapidSkips = true, favoritePreferences = true, fixedOffset = true, driftCorrection = true, offsetNudges = true, negativeOffset = true, manualUnlock = true, sharedPlayPause = true, sharedSeek = true, boundaryClamping = true, mpv = a.Get("mpv-version"), simultaneousVideo = true, simultaneousAudioDecode = true, audioOutput = "null (CI only)", independentPause = true, independentSeek = true, independentVolume = true, namedTrackMenus = true, trackIsolation = true, replacementBothPlayers = true }));
         form.Close();
     }
 }

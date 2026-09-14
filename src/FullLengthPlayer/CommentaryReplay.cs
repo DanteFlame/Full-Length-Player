@@ -13,15 +13,15 @@ internal sealed class CommentaryReplay(PlayerPane a, PlayerPane b, MasterTranspo
         if (!master.Locked) throw new InvalidOperationException("Lock the alignment before replaying commentary.");
         if (master.SeekingTogether || p.A.Get("seeking") == "yes" || p.B.Get("seeking") == "yes")
             throw new InvalidOperationException("Wait for seeking to finish before replaying commentary.");
-        if (p.ATime <= 0.05) return;
-        bool paused = p.A.Get("pause") == "yes";
-        saved = new(p.ATime, p.A.Number("speed"), p.B.Number("speed"), a.Volume, b.Volume,
+        if (master.TimelineTime - master.TimelineStart <= 0.05) return;
+        bool paused = p.A.Get("pause") == "yes" && p.B.Get("pause") == "yes";
+        saved = new(master.TimelineTime, p.A.Number("speed"), p.B.Number("speed"), a.Volume, b.Volume,
             p.A.Get("mute") ?? "no", p.B.Get("mute") ?? "no");
         try
         {
             master.SetSpeed(1);
             a.SetVolume(100); p.A.Set("mute", "no"); p.B.Set("mute", "yes");
-            master.SeekReaction(Math.Max(0, p.ATime - 10));
+            master.SeekReaction(Math.Max(master.TimelineStart, saved.ReturnTime - 10));
             if (paused) master.TogglePause(); // Change the coordinated seek's resume intent.
         }
         catch { Cancel(); throw; }
@@ -31,7 +31,7 @@ internal sealed class CommentaryReplay(PlayerPane a, PlayerPane b, MasterTranspo
         if (saved is not { } state) return;
         if (!master.Locked) { Cancel(); return; }
         if (master.SeekingTogether) return;
-        if (a.Player is { } player && (player.Number("time-pos") >= state.ReturnTime || player.Get("eof-reached") == "yes")) Cancel();
+        if (a.Player is { } player && (master.TimelineTime >= state.ReturnTime || master.TimelineTime >= master.TimelineEnd - 0.05)) Cancel();
     }
     internal void Cancel()
     {

@@ -3,7 +3,48 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 10 — commentary replay and viewing controls
+## Current build: milestone 11 — audio matching refinement
+
+Gonz confirmed automatic canvas selection, fullscreen timeline/cursor hiding,
+five-second skips and either video continuing after the other ends. The remaining
+refinements are the audio dialog and handling of commentary-heavy samples.
+
+The audio dialog now uses a resizable layout with separate rows for instructions,
+checkbox, result and buttons, avoiding overlap at larger display scaling.
+Multi-sampling starts with the same sample as the single check, then visits widely
+spaced sections across the available next ten minutes. It skips overlapping samples.
+A good initial result is retained if other sections are weak: the dialog explicitly
+labels it **Single-sample candidate**, not consensus. Two agreeing strong results
+are corroborated; three allow an early finish. Strong conflicting offsets still
+block applying a result. Match thresholds and the approximate ten-second budget
+are unchanged. Single-sample mode remains available.
+
+### Fullscreen viewing and complete playback
+
+Milestones 0–10 are confirmed on Gonz's PC and merged into `main`; new development
+uses small feature branches. The old LibVLC implementation remains in Git history.
+
+- At startup, choose the closest fixed canvas (16:9, 4:3 or 16:10) to the display
+  containing the app. This uses full display bounds, not taskbar-reduced work area.
+  The canvas selector remains available for manual changes.
+- Fullscreen mouse movement, pause/play and J/L show a seekable master timeline
+  for 2.5 seconds. Cursor and timeline hide when idle, even paused; dragging keeps
+  them visible. Leaving fullscreen or switching apps restores the cursor.
+- J/L, arrows and master skip buttons use five seconds. H still replays ten seconds.
+- Locked timeline covers both videos in full, including source-only preamble or
+  credits. Each video waits at its first frame before its start and holds its last
+  frame afterward. The timeline begins at whichever video starts first. Offset
+  remains B−A; clock labels show elapsed time across the whole combined span.
+- Audio sync defaults to multiple distinct 20-second samples across up to the next
+  ten minutes, searching ±60 seconds around the estimated alignment for each.
+  Agreeing strong matches within 0.10 seconds produce a median on the 0.05
+  grid. A lone strong match is labelled as an unconfirmed candidate. Conflicting
+  strong matches are reported, never averaged. It stops early on three agreeing
+  samples or after an approximately ten-second budget. Slow network
+  cancellation/cleanup can take longer. Uncheck multiple samples for the original
+  single-sample check; short remaining clips may not provide enough samples.
+
+### Confirmed milestone 10 controls
 
 Gonz confirmed audio alignment against matching anime intros and a real reaction,
 within 0.05 seconds of his manual alignment. The search radius is now ±60 seconds;
@@ -312,3 +353,7 @@ repository access and do not publish a public release.
 
 Milestone 10 tests exact replay state restoration, beginning clamping, cancellation,
 replacement, opposite-edge cropping and independent/fullscreen wheel volume.
+
+Milestone 11 tests both added union boundaries, source-to-reaction rejoining,
+source-tail seeking/pause/speed, fullscreen timeline visibility, five-second keys,
+canvas selection, consensus agreement/conflict and cancellation.
