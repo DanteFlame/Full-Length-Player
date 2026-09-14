@@ -26,6 +26,18 @@ internal sealed class PlayerPane : UserControl
     internal void AdjustVolume(int delta) { VolumeEdited?.Invoke(); SetVolume(Volume + delta); }
     private bool network;
     private AudioInput? analysisInput;
+    private string? originalYouTube;
+    internal bool StartPaused { get; set; }
+    internal SavedMedia CaptureMedia()
+    {
+        var input = analysisInput ?? throw new InvalidOperationException("Load media first.");
+        string kind = originalYouTube != null ? "youtube" : network ? "network" : "local";
+        // External subtitle IDs do not survive loading; leave them off for this milestone.
+        string sid = Player?.Get("sid") ?? "no";
+        for (int i = 0; i < (Player?.Number("track-list/count") ?? 0); i++)
+            if (Player?.Get($"track-list/{i}/id") == sid && Player.Get($"track-list/{i}/type") == "sub" && Player.Get($"track-list/{i}/external") == "yes") sid = "no";
+        return new(kind, originalYouTube ?? input.Path, input.Referer, input.Headers.ToArray(), Player?.Number("time-pos") ?? 0, Player?.Get("aid") ?? "auto", sid);
+    }
     internal AudioInput CaptureAudio() => analysisInput is { } input && Player?.Get("aid") is { } aid && aid != "no"
         ? input with { Track = aid } : throw new InvalidOperationException("Select an audio track in both players first.");
     private CancellationTokenSource? resolving;
@@ -115,7 +127,7 @@ internal sealed class PlayerPane : UserControl
         fileName = Path.GetFileName(path);
         analysisInput = new(Path.GetFullPath(path), "", Array.Empty<string>(), null, "auto");
         Player.Command("loadfile", Path.GetFullPath(path), "replace");
-        Player.Set("pause", "no");
+        Player.Set("pause", StartPaused ? "yes" : "no");
         ActivatePane();
     }
     internal async void OpenUrl()
@@ -134,7 +146,7 @@ internal sealed class PlayerPane : UserControl
     {
         if (Player == null) throw new InvalidOperationException("MPV is unavailable.");
         CancelResolution();
-        analysisInput = null;
+        analysisInput = null; originalYouTube = null;
         ManualTransport?.Invoke(); MediaReplaced?.Invoke();
         Player.Command("stop");
         Player.PollError(); // Discard failures from the previous load.
@@ -153,7 +165,7 @@ internal sealed class PlayerPane : UserControl
         {
             var result = await (resolver ?? YouTubeResolver.Resolve)(canonical, request.Token);
             request.Token.ThrowIfCancellationRequested();
-            LoadResolved(result);
+            LoadResolved(result); originalYouTube = canonical;
         }
         finally { if (resolving == request) { resolving = null; cancelResolve.Visible = false; } }
     }
@@ -168,7 +180,7 @@ internal sealed class PlayerPane : UserControl
             Player.SetStringList("http-header-fields", source.Headers);
             if (audioUrl != null) Player.SetStringList("audio-files", new[] { audioUrl });
             Player.Command("loadfile", source.Url, "replace");
-            Player.Set("pause", "no");
+            Player.Set("pause", StartPaused ? "yes" : "no");
         }
         catch { throw new InvalidOperationException("Could not open stream. Check the URL and HTTP settings."); }
         ActivatePane();

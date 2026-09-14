@@ -92,6 +92,7 @@ internal sealed class MpvPlayer : IDisposable
         }
         finally { foreach (var p in pointers) if (p != IntPtr.Zero) Marshal.FreeCoTaskMem(p); }
     }
+    internal int FilesLoaded { get; private set; }
     internal bool Ended { get; private set; }
     public string? PollError()
     {
@@ -100,6 +101,7 @@ internal sealed class MpvPlayer : IDisposable
         {
             var ev = Marshal.PtrToStructure<Native.Event>(Native.mpv_wait_event(handle, 0));
             if (ev.Id == 0) break;
+            if (ev.Id == 8) FilesLoaded++;
             if (ev.Id == 7 && ev.Data != IntPtr.Zero)
             {
                 Ended = true;
