@@ -15,7 +15,7 @@ internal static class AudioConsensus
     // the budget on adjacent commentary. Do not count overlapping A clips twice.
     internal static double[] SampleAdvances(double remaining)
     {
-        double horizon = Math.Max(0, Math.Min(580, remaining - 20));
+        double horizon = Math.Floor(Math.Max(0, Math.Min(580, remaining - 20)) * 20) / 20;
         var starts = new List<double>();
         foreach (double fraction in new[] { 0.0, 0.5, 1.0, 0.25, 0.75, 0.125, 0.375, 0.625, 0.875 })
         {
@@ -35,7 +35,7 @@ internal static class AudioConsensus
         foreach (double advance in SampleAdvances(aDuration - origin))
         {
             double aStart = origin + advance, expected = bTime + (aStart - aTime);
-            if (aStart + 20 > aDuration) break;
+            if (aStart + 20 > aDuration) continue;
             double bStart = Math.Max(0, expected - 60), length = Math.Min(bDuration - bStart, expected + 80 - bStart);
             if (length < 20) continue;
             try

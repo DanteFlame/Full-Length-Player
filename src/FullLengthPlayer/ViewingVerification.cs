@@ -58,6 +58,7 @@ internal static class ViewingVerification
         Check(plan[0] == 0 && plan[1] >= 200 && plan[2] >= 500, "Samples are not spread out.");
         Check(plan.All(x => plan.All(y => x == y || Math.Abs(x-y) >= 20)), "Overlapping samples count as independent evidence.");
         Check(AudioConsensus.SampleAdvances(20).SequenceEqual(new[] {0.0}), "Short clip plan failed.");
+        Check(AudioConsensus.SampleAdvances(100.03).All(x => x + 20 <= 100.03), "Sample plan exceeded a fractional duration.");
         using (var dialog = new AudioSyncDialog(form.Reaction.CaptureAudio(), form.Source.CaptureAudio(), 0, 0, 40, 40))
         {
             dialog.Show(form); dialog.PerformLayout();
