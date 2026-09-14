@@ -50,7 +50,7 @@ internal static class SetupVerification
                 form.ApplyIcon(id, save:false); Check(form.IconId == id && form.Icon != null, "Window icon did not change.");
             }
             string current = form.IconId; form.NewSession(); Check(form.IconId == current, "New session reset appearance.");
-            File.WriteAllText(path,"unknown"); Check(AppIcons.Read(path) == AppIcons.Ids[0], "Bad preference should use default icon.");
+            File.WriteAllText(path,"unknown"); Check(AppIcons.Read(path) == AppIcons.DefaultId, "Bad preference should use default icon.");
         }
         finally { File.Delete(path); }
     }

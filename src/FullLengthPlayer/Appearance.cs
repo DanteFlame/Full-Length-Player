@@ -2,13 +2,14 @@ using System.Reflection;
 namespace FullLengthPlayer;
 internal static class AppIcons
 {
+    internal const string DefaultId = "teal-orange-glass";
     internal static readonly string[] Ids = { "slate-red-solid", "teal-gold-solid", "teal-orange-solid", "slate-red-glass", "teal-gold-glass", "teal-orange-glass" };
     internal static readonly string[] Labels = { "Slate / Red · Solid", "Teal / Gold · Solid", "Teal / Orange · Solid", "Slate / Red · Glass", "Teal / Gold · Glass", "Teal / Orange · Glass" };
     internal static string PreferencePath => Path.Combine(SessionStore.DirectoryPath, "appearance.txt");
     internal static string Read(string? path = null)
     {
-        try { string value = File.ReadAllText(path ?? PreferencePath).Trim(); return Ids.Contains(value) ? value : Ids[0]; }
-        catch { return Ids[0]; }
+        try { string value = File.ReadAllText(path ?? PreferencePath).Trim(); return Ids.Contains(value) ? value : DefaultId; }
+        catch { return DefaultId; }
     }
     internal static void Save(string id, string? path = null)
     {
@@ -47,7 +48,7 @@ internal static class AppIcons
 internal sealed partial class MainForm
 {
     private Icon? chosenIcon;
-    internal string IconId { get; private set; } = AppIcons.Ids[0];
+    internal string IconId { get; private set; } = AppIcons.DefaultId;
     internal void ApplyIcon(string id, bool save = true)
     {
         var next = AppIcons.Load(id);
@@ -58,7 +59,7 @@ internal sealed partial class MainForm
     {
         using var dialog = new Form { Text = "Appearance — App icon", StartPosition = FormStartPosition.CenterParent, AutoScaleMode = AutoScaleMode.Dpi, ClientSize = new Size(660,480), MinimumSize = new Size(450,400) };
         var grid = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(12) };
-        var note = new Label { Dock = DockStyle.Bottom, Height = 54, Padding = new Padding(12,5,12,5), Text = "Choose the window and running taskbar icon. Your choice is remembered. The EXE and existing shortcuts keep the default Slate / Red icon." };
+        var note = new Label { Dock = DockStyle.Bottom, Height = 54, Padding = new Padding(12,5,12,5), Text = "Choose the window and running taskbar icon. Your choice is remembered. The EXE and existing shortcuts keep the default Teal / Orange Glass icon." };
         var close = new Button { Dock = DockStyle.Bottom, Height = 32, Text = "Done", DialogResult = DialogResult.OK };
         var pictures = new List<Bitmap>();
         for (int i = 0; i < AppIcons.Ids.Length; i++)

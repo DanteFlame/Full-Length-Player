@@ -16,8 +16,8 @@ into `main`. This build adds:
   paused, ready for setup. Press master play when the pairing is aligned.
 - **Appearance…**: choose among six supplied Solid/Glass icons in Slate/Red,
   Teal/Gold and Teal/Orange. The window and running taskbar icon change immediately
-  and the preference survives restart. The EXE and existing shortcuts use Slate/Red
-  Solid; Windows may retain a pinned shortcut's own icon.
+  and the preference survives restart. The EXE and newly created default shortcuts use Teal/Orange
+  Glass; Windows may retain a pinned shortcut's own icon.
 
 All six original JPEGs are preserved in `assets/icons`. The Windows build packages
 16, 24, 32, 48, 64, 128 and 256 pixel icon frames from each original. This first pass
@@ -27,6 +27,13 @@ and transparent-background masters remain possible appearance refinements.
 **PC check:** load each source type and confirm it stays paused; use New session
 while aligned or during H replay and confirm a blank default setup; try all six
 icons in Appearance and restart to confirm your selection is remembered.
+
+The requested default is now **Teal / Orange · Glass** (translucent crystal).
+Previously saved icon choices remain respected, and all six choices remain in the
+picker. The user supplied `FLP icons.zip` for the pending transparent-source rebuild;
+those originals must be inspected before replacing the current JPEG-based assets.
+The requested asset refinement is to trim excess alpha margins, preserve transparency
+at every size, sharpen downsampling, and inspect icons on light and dark backgrounds.
 
 ## Saved settings and sessions (milestone 12)
 
