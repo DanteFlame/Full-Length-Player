@@ -13,6 +13,8 @@ internal sealed partial class MainForm
         var resume = new ToolStripButton("Resume last session");
         sessionBar.Items.AddRange(new ToolStripItem[] { save, open, resume });
         Controls.Add(sessionBar);
+        Reaction.MediaReplaced += () => { if (!restoringSession) failedRestore = false; };
+        Source.MediaReplaced += () => { if (!restoringSession) failedRestore = false; };
         save.Click += (_, _) =>
         {
             try
@@ -134,6 +136,8 @@ internal sealed partial class MainForm
             {
                 Master.SetOffset(session.Offset); Master.SeekReaction(session.Clock);
                 await Until(() => !Master.SeekingTogether);
+                if (!Master.Locked || Math.Abs(Master.TimelineTime - Math.Clamp(session.Clock, Master.TimelineStart, Master.TimelineEnd)) > .2)
+                    throw new InvalidOperationException("Saved alignment could not be restored.");
             }
             else
             {

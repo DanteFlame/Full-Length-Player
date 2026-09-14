@@ -25,7 +25,7 @@ internal static class SessionStore
         {
             var session = JsonSerializer.Deserialize<SavedSession>(Protect(File.ReadAllBytes(path), true));
             if (session == null || session.Version != 1 || session.A == null || session.B == null || session.Settings == null
-                || !double.IsFinite(session.Offset) || Math.Abs(session.Offset) > 604800 || !double.IsFinite(session.Clock)) throw new InvalidOperationException();
+                || !double.IsFinite(session.Offset) || Math.Abs(session.Offset) > 604800 || !double.IsFinite(session.Clock) || Math.Abs(session.Clock) > 604800) throw new InvalidOperationException();
             Validate(session.A); Validate(session.B); Validate(session.Settings);
             return session;
         }
@@ -53,7 +53,7 @@ internal static class SessionStore
     internal static void SaveSettings(SavedSettings settings) => AtomicWrite(SettingsPath, JsonSerializer.SerializeToUtf8Bytes(settings));
     internal static SavedSettings? ReadSettings()
     {
-        try { var s = JsonSerializer.Deserialize<SavedSettings>(File.ReadAllBytes(SettingsPath)); if (s != null) Validate(s); return s; }
+        try { if (new FileInfo(SettingsPath).Length > 1024 * 1024) return null; var s = JsonSerializer.Deserialize<SavedSettings>(File.ReadAllBytes(SettingsPath)); if (s != null) Validate(s); return s; }
         catch { return null; } // A bad optional settings file must not block startup.
     }
     [StructLayout(LayoutKind.Sequential)] private struct Blob { public int Size; public IntPtr Data; }
