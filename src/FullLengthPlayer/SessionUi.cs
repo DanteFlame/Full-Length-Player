@@ -8,10 +8,14 @@ internal sealed partial class MainForm
     private bool verificationMode, restoringSession, failedRestore;
     private void BuildSessionControls()
     {
+        var fresh = new ToolStripButton("New session");
+        var appearance = new ToolStripButton("Appearance…");
+        fresh.Click += (_, _) => { try { NewSession(); } catch { MessageBox.Show(this, "Could not preserve the current session. Save it to a writable location before starting a new session.", "New session"); } };
+        appearance.Click += (_, _) => ChooseIcon();
         var save = new ToolStripButton("Save session…");
         var open = new ToolStripButton("Open session…");
         var resume = new ToolStripButton("Resume last session");
-        sessionBar.Items.AddRange(new ToolStripItem[] { save, open, resume });
+        sessionBar.Items.AddRange(new ToolStripItem[] { fresh, save, open, resume, appearance });
         Controls.Add(sessionBar);
         Reaction.MediaReplaced += () => { if (!restoringSession) failedRestore = false; };
         Source.MediaReplaced += () => { if (!restoringSession) failedRestore = false; };
@@ -92,6 +96,7 @@ internal sealed partial class MainForm
         foreach (var media in new[] { session.A, session.B })
             if (media.Kind == "local" && !File.Exists(media.Location)) throw new FileNotFoundException("A saved media file is missing.");
         restoringSession = true; Enabled = false; UseWaitCursor = true;
+        bool oldStartA = Reaction.StartPaused, oldStartB = Source.StartPaused;
         Replay.Cancel(); Master.Unlock(); Reaction.StartPaused = Source.StartPaused = true;
         var a = Reaction.Player!; var b = Source.Player!;
         a.Set("pause", "yes"); b.Set("pause", "yes");
@@ -156,7 +161,7 @@ internal sealed partial class MainForm
         }
         finally
         {
-            Reaction.StartPaused = Source.StartPaused = false; restoringSession = false;
+            Reaction.StartPaused = oldStartA; Source.StartPaused = oldStartB; restoringSession = false;
             if (!IsDisposed) { Enabled = true; UseWaitCursor = false; }
         }
     }

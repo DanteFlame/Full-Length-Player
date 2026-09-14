@@ -27,7 +27,7 @@ internal sealed class PlayerPane : UserControl
     private bool network;
     private AudioInput? analysisInput;
     private string? originalYouTube;
-    internal bool StartPaused { get; set; }
+    internal bool StartPaused { get; set; } = true;
     internal SavedMedia CaptureMedia()
     {
         var input = analysisInput ?? throw new InvalidOperationException("Load media first.");
@@ -102,7 +102,14 @@ internal sealed class PlayerPane : UserControl
         SetActive(false);
         status.Text = "Open a local video";
     }
-    internal void Initialize(bool verification) => Player = new MpvPlayer(video.Handle, verification);
+    internal void Initialize(bool verification) { Player = new MpvPlayer(video.Handle, verification); StartPaused = !verification; }
+    internal void ClearMedia()
+    {
+        PrepareLoad(false, "No video loaded"); Player!.Set("pause", "yes");
+        Player.Set("aid", "auto"); Player.Set("sid", "auto");
+        dragging = false; timeline.Value = 0; RefreshTrackMenu(false); RefreshTrackMenu(true);
+        ActivatePane(); UpdatePlayback();
+    }
     private void ActivatePane() => Activated?.Invoke(this);
     internal void SetActive(bool active)
     {
@@ -126,8 +133,8 @@ internal sealed class PlayerPane : UserControl
         PrepareLoad(false, "No video loaded");
         fileName = Path.GetFileName(path);
         analysisInput = new(Path.GetFullPath(path), "", Array.Empty<string>(), null, "auto");
-        Player.Command("loadfile", Path.GetFullPath(path), "replace");
         Player.Set("pause", StartPaused ? "yes" : "no");
+        Player.Command("loadfile", Path.GetFullPath(path), "replace");
         ActivatePane();
     }
     internal async void OpenUrl()
@@ -179,8 +186,8 @@ internal sealed class PlayerPane : UserControl
             Player!.Set("referrer", source.Referer);
             Player.SetStringList("http-header-fields", source.Headers);
             if (audioUrl != null) Player.SetStringList("audio-files", new[] { audioUrl });
-            Player.Command("loadfile", source.Url, "replace");
             Player.Set("pause", StartPaused ? "yes" : "no");
+            Player.Command("loadfile", source.Url, "replace");
         }
         catch { throw new InvalidOperationException("Could not open stream. Check the URL and HTTP settings."); }
         ActivatePane();

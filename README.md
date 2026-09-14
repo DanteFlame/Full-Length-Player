@@ -3,7 +3,32 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 12 — saved settings and sessions
+## Current build: milestone 13 — session setup and app icons
+
+Milestone 12 is confirmed with a remote reaction and local source pairing and merged
+into `main`. This build adds:
+
+- **New session**: clear both videos and reset layout, alignment, speed and audio to
+  defaults without restarting. The previous complete pairing stays available through
+  Resume last session. The canvas again chooses the closest display aspect ratio.
+  Favorite speed and your icon preference remain personal preferences.
+- **Paused loading**: local files, direct streams and resolved YouTube videos load
+  paused, ready for setup. Press master play when the pairing is aligned.
+- **Appearance…**: choose among six supplied Solid/Glass icons in Slate/Red,
+  Teal/Gold and Teal/Orange. The window and running taskbar icon change immediately
+  and the preference survives restart. The EXE and existing shortcuts use Slate/Red
+  Solid; Windows may retain a pinned shortcut's own icon.
+
+All six original JPEGs are preserved in `assets/icons`. The Windows build packages
+16, 24, 32, 48, 64, 128 and 256 pixel icon frames from each original. This first pass
+retains the supplied white background and artwork. Small-size art simplification
+and transparent-background masters remain possible appearance refinements.
+
+**PC check:** load each source type and confirm it stays paused; use New session
+while aligned or during H replay and confirm a blank default setup; try all six
+icons in Appearance and restart to confirm your selection is remembered.
+
+## Saved settings and sessions (milestone 12)
 
 Milestone 11 audio matching and dialog fixes are confirmed on Gonz's PC and merged
 into `main`. Audio matching stays unchanged in this milestone.
@@ -40,7 +65,7 @@ Saving during “What Did They Say?” first restores your normal viewing settin
 
 ### Fullscreen viewing and complete playback
 
-Milestones 0–11 are confirmed on Gonz's PC and merged into `main`; new development
+Milestones 0–12 are confirmed on Gonz's PC and merged into `main`; new development
 uses small feature branches. The old LibVLC implementation remains in Git history.
 
 - At startup, choose the closest fixed canvas (16:9, 4:3 or 16:10) to the display
