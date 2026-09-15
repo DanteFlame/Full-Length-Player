@@ -2,7 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Collections.Generic;
+
 // Build-time, alpha-aware Lanczos-3 resampling. Each size is made from the original.
 public static class IconRaster
 {
@@ -25,13 +25,14 @@ public static class IconRaster
         var result=new Tap[target][];
         for(int p=0;p<target;p++) {
             double center=(p+.5)*source/target-.5, sum=0;
-            var taps=new List<Tap>();
+            int first=(int)Math.Ceiling(center-3*scale), last=(int)Math.Floor(center+3*scale);
+            var taps=new Tap[last-first+1];
             for(int q=(int)Math.Ceiling(center-3*scale);q<=(int)Math.Floor(center+3*scale);q++) {
                 double weight=Kernel((q-center)/scale);sum+=weight;
-                taps.Add(new Tap(Math.Max(0,Math.Min(source-1,q)),weight));
+                taps[q-first]=new Tap(Math.Max(0,Math.Min(source-1,q)),weight);
             }
-            for(int q=0;q<taps.Count;q++) taps[q]=new Tap(taps[q].Index,taps[q].Weight/sum);
-            result[p]=taps.ToArray();
+            for(int q=0;q<taps.Length;q++) taps[q]=new Tap(taps[q].Index,taps[q].Weight/sum);
+            result[p]=taps;
         }
         return result;
     }

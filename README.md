@@ -33,10 +33,7 @@ icons in Appearance and restart to confirm your selection is remembered.
 
 The requested default is now **Teal / Orange · Glass** (translucent crystal).
 Previously saved icon choices remain respected, and all six choices remain in the
-picker. The user supplied `FLP icons.zip` for the pending transparent-source rebuild;
-those originals must be inspected before replacing the current JPEG-based assets.
-The requested asset refinement is to trim excess alpha margins, preserve transparency
-at every size, sharpen downsampling, and inspect icons on light and dark backgrounds.
+picker. The transparent-source icon repair is ready for visual confirmation on Windows.
 
 ## Saved settings and sessions (milestone 12)
 
