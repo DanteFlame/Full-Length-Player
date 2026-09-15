@@ -19,10 +19,13 @@ into `main`. This build adds:
   and the preference survives restart. The EXE and newly created default shortcuts use Teal/Orange
   Glass; Windows may retain a pinned shortcut's own icon.
 
-All six original JPEGs are preserved in `assets/icons`. The Windows build packages
-16, 24, 32, 48, 64, 128 and 256 pixel icon frames from each original. This first pass
-retains the supplied white background and artwork. Small-size art simplification
-and transparent-background masters remain possible appearance refinements.
+All six transparent PNG originals are preserved in `FLP icons.zip`. The Windows
+build crops their transparent margins and creates each size directly from its
+original using alpha-aware Lanczos-3 filtering, with gentle sharpening at small
+sizes. Every icon contains 16, 20, 24, 32, 40, 48, 64, 96, 128 and **256 pixel**
+32-bit RGBA frames. The 256×256 frame is the largest Windows desktop ICO frame;
+the smaller frames serve title bars, taskbars and different display scaling levels.
+Transparency is retained throughout. The older JPEGs are no longer build inputs.
 
 **PC check:** load each source type and confirm it stays paused; use New session
 while aligned or during H replay and confirm a blank default setup; try all six

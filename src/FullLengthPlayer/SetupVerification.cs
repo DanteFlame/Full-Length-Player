@@ -44,8 +44,8 @@ internal static class SetupVerification
         {
             foreach (string id in AppIcons.Ids)
             {
-                foreach (int size in new[] {16,24,32,48,64,128,256})
-                { using var icon = AppIcons.Load(id,size); Check(icon.Width == size && icon.Height == size, $"Icon size missing: {id}, requested {size}, got {icon.Width}x{icon.Height}."); using var bitmap = icon.ToBitmap(); Check(bitmap.Width == size, "Icon cannot render."); }
+                foreach (int size in new[] {16,20,24,32,40,48,64,96,128,256})
+                { using var icon = AppIcons.Load(id,size); Check(icon.Width == size && icon.Height == size, $"Icon size missing: {id}, requested {size}, got {icon.Width}x{icon.Height}."); using var bitmap = icon.ToBitmap(); Check(bitmap.Width == size, "Icon cannot render."); Check(bitmap.GetPixel(0,0).A == 0 && bitmap.GetPixel(size-1,size-1).A == 0, "Icon lost transparency."); }
                 AppIcons.Save(id,path); Check(AppIcons.Read(path) == id, "Icon preference not restored.");
                 form.ApplyIcon(id, save:false); Check(form.IconId == id && form.Icon != null, "Window icon did not change.");
             }
