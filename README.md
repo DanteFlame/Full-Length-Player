@@ -18,16 +18,14 @@ through Moonlight.
 ## Downloads
 
 Get the Windows ZIP from [Releases](https://github.com/DanteFlame/Full-Length-Player/releases).
-**v0.13.0** is the stable release; **v0.14.0-beta.1** adds fullscreen touch controls
-and feedback and has now passed Moonlight user testing. Newer beta builds are listed
-alongside it for testing. Extract the ZIP and run
-`FullLengthPlayer.exe`, keeping its accompanying files together.
+**v0.14.0** is the stable release, including the user-tested fullscreen controls.
+Extract the ZIP and run `FullLengthPlayer.exe`, keeping its accompanying files together.
 
 We publish numbered releases as the app improves: new feature versions advance the
 minor number, repairs advance the patch number, and betas identify builds awaiting
 user confirmation. Version 1.0 will mark a mature baseline, not the end of development.
 
-## Current build: v0.14.0-beta.2 — fullscreen hold controls
+## Stable v0.14.0 — fullscreen controls
 
 Milestone 14’s original tap controls and feedback are confirmed on the user’s PC.
 This update adds hold controls, faster top-left messages and clearer button contrast:
