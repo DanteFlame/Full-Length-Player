@@ -13,7 +13,8 @@ public static class IconRaster
         for(int y=0;y<image.Height;y++) for(int x=0;x<image.Width;x++) {
             byte a=image.GetPixel(x,y).A;
             if(a==0) transparent=true;
-            if(a>0) { left=Math.Min(left,x);right=Math.Max(right,x);top=Math.Min(top,y);bottom=Math.Max(bottom,y); }
+            // Ignore near-invisible fringe pixels when finding the visible artwork.
+            if(a>=128) { left=Math.Min(left,x);right=Math.Max(right,x);top=Math.Min(top,y);bottom=Math.Max(bottom,y); }
         }
         if(!transparent || right<left) throw new InvalidOperationException("Icon must contain artwork and genuine transparent pixels.");
         return Rectangle.FromLTRB(left,top,right+1,bottom+1);
@@ -38,8 +39,8 @@ public static class IconRaster
     }
     static double Clamp(double v) { return Math.Max(0,Math.Min(1,v)); }
     public static Bitmap Render(Bitmap image,Rectangle crop,int size) {
-        int pad=Math.Max(1,(int)Math.Round(size*.015));
-        double factor=(size-2*pad)/(double)Math.Max(crop.Width,crop.Height);
+        // Fill the square as far as aspect ratio allows, without adding padding.
+        double factor=size/(double)Math.Max(crop.Width,crop.Height);
         int w=Math.Max(1,(int)Math.Round(crop.Width*factor)), h=Math.Max(1,(int)Math.Round(crop.Height*factor));
         var original=new float[crop.Width*crop.Height*4];
         for(int y=0;y<crop.Height;y++) for(int x=0;x<crop.Width;x++) {

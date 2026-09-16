@@ -10,7 +10,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <SelfContained>true</SelfContained>
     <PublishTrimmed>false</PublishTrimmed>
-    <ApplicationIcon>GeneratedIcons/teal-orange-glass.ico</ApplicationIcon>
+    <ApplicationIcon>GeneratedIcons/teal-orange-solid.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="GeneratedIcons/*.ico" LogicalName="FullLengthPlayer.Icons.%(Filename)%(Extension)" />

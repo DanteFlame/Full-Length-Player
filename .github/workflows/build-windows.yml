@@ -50,7 +50,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = 'milestone-13-preview-' + '${{ github.sha }}'.Substring(0, 12)
-          gh release create $tag 'publish/FullLengthPlayer-win-x64.zip' --draft --target '${{ github.sha }}' --title 'Milestone 13 repaired transparent icons — Windows test build' --notes 'Windows tests passed. Repairs all six icons from transparent PNG originals with cropped margins, sharp downscaling and 256px ICO frames. Teal/orange crystal is the default. New session and paused loading remain included.'
+          gh release create $tag 'publish/FullLengthPlayer-win-x64.zip' --draft --target '${{ github.sha }}' --title 'Milestone 13 tighter icons and solid default — Windows test build' --notes 'Windows tests passed. Repairs all six icons from transparent PNG originals with cropped margins, sharp downscaling and 256px ICO frames. Teal/orange solid is the default; visible artwork is tightly cropped with no added padding. New session and paused loading remain included.'
           if ($LASTEXITCODE -ne 0) { throw 'Draft download creation failed.' }
       - name: Collect startup diagnostics
         if: always()

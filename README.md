@@ -17,10 +17,11 @@ into `main`. This build adds:
 - **Appearance…**: choose among six supplied Solid/Glass icons in Slate/Red,
   Teal/Gold and Teal/Orange. The window and running taskbar icon change immediately
   and the preference survives restart. The EXE and newly created default shortcuts use Teal/Orange
-  Glass; Windows may retain a pinned shortcut's own icon.
+  Solid; Windows may retain a pinned shortcut's own icon.
 
 All six transparent PNG originals are preserved in `FLP icons.zip`. The Windows
-build crops their transparent margins and creates each size directly from its
+build crops to the visible artwork (alpha ≥128), ignoring faint fringe pixels, with
+no added padding and the original proportions retained. It creates each size directly from its
 original using alpha-aware Lanczos-3 filtering, with gentle sharpening at small
 sizes. Every icon contains 16, 20, 24, 32, 40, 48, 64, 96, 128 and **256 pixel**
 32-bit RGBA frames. The 256×256 frame is the largest Windows desktop ICO frame;
@@ -31,7 +32,7 @@ Transparency is retained throughout. The older JPEGs are no longer build inputs.
 while aligned or during H replay and confirm a blank default setup; try all six
 icons in Appearance and restart to confirm your selection is remembered.
 
-The requested default is now **Teal / Orange · Glass** (translucent crystal).
+The requested default is now **Teal / Orange · Solid**.
 Previously saved icon choices remain respected, and all six choices remain in the
 picker. The transparent-source icon repair is ready for visual confirmation on Windows.
 
