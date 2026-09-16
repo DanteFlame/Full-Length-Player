@@ -7,10 +7,13 @@ internal sealed class FullscreenOverlay : Panel
     internal bool Dragging { get; private set; }
     internal event Action<double>? Seek;
     internal event Action? Activity;
+    internal event Action? ExitRequested;
+    internal Button ExitButton { get; } = new() { Text = "Exit fullscreen", Dock = DockStyle.Right, Width = 125 };
     internal FullscreenOverlay()
     {
         BackColor = Color.FromArgb(35, 35, 35); Height = 60; Visible = false;
-        Controls.Add(Timeline); Controls.Add(time);
+        Controls.Add(Timeline); Controls.Add(time); Controls.Add(ExitButton);
+        ExitButton.Click += (_, _) => ExitRequested?.Invoke();
         Timeline.MouseDown += (_, _) => { Dragging = true; Activity?.Invoke(); };
         Timeline.MouseUp += (_, _) => { Dragging = false; Activity?.Invoke(); Seek?.Invoke(Timeline.Value / 10000.0); };
         Timeline.MouseCaptureChanged += (_, _) => { if (!Timeline.Capture) Dragging = false; };
