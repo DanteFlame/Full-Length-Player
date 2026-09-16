@@ -1,4 +1,4 @@
-<h1><img src="https://raw.githubusercontent.com/DanteFlame/Full-Length-Player/main/docs/teal-orange-solid.png" width="80" alt="Full Length Player icon"> Full Length Player</h1>
+<h1><img src="docs/teal-orange-solid.png" width="80" alt="Full Length Player icon"> Full Length Player</h1>
 
 **The reaction and the show. One viewing experience.**
 
