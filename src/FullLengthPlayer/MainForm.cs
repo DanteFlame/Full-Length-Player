@@ -59,6 +59,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
     public MainForm()
     {
         Text = "Full-Length Player";
+        ApplyIcon(AppIcons.Read(), save: false);
         BackColor = Color.Black;
         ClientSize = new Size(1280, 650);
         MinimumSize = new Size(320, 240);
@@ -378,6 +379,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
         Replay.Cancel();
         timer.Stop(); timer.Dispose();
         Reaction.Shutdown(); Source.Shutdown();
+        Icon = null; chosenIcon?.Dispose(); chosenIcon = null;
         base.OnFormClosed(e);
     }
 }

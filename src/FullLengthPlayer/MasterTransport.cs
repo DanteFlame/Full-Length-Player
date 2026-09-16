@@ -40,6 +40,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     {
         seeks.Cancel(); sourceHeld = reactionHeld = false; Locked = false; Drift = null; SyncStatus = reason;
     }
+    internal void Reset() { Unlock(); Offset = 0; CorrectionCount = 0; nextCorrection = 0; }
     internal void CaptureAlignment()
     {
         var p = Snapshot() ?? throw new InvalidOperationException("Load both videos first.");

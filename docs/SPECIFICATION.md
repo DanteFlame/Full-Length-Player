@@ -349,3 +349,16 @@ Save original YouTube links and resolve afresh; expired direct links need replac
 Media URLs/headers are now persisted only within Windows DPAPI protected sessions,
 superseding milestone 7's temporary no-persistence restriction. Never log them.
 External subtitle files and portable session sharing remain outside this milestone.
+
+
+## Milestone 13: fresh setup and supplied icon choices
+
+User confirmed milestone 12 with remote reaction plus local source. Add New session
+to clear both engines, pending resolvers and temporary replay state, restoring
+viewing defaults and automatic display canvas. Preserve the previous complete
+pairing for Resume. Every normal load starts paused, including YouTube/direct URLs.
+Offer six supplied designs in Appearance, persist selection independently of media
+sessions, and retain original art. Runtime window/taskbar icon is configurable;
+the compiled EXE icon remains Slate/Red Solid. Preserve favorite speed and icon
+when starting a new session. Native Windows verification covers all icon sizes,
+paused loading, reset during H and cancellation of pending YouTube work.

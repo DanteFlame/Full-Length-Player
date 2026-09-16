@@ -3,7 +3,40 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 12 — saved settings and sessions
+## Current build: milestone 13 — session setup and app icons
+
+Milestone 12 is confirmed with a remote reaction and local source pairing and merged
+into `main`. This build adds:
+
+- **New session**: clear both videos and reset layout, alignment, speed and audio to
+  defaults without restarting. The previous complete pairing stays available through
+  Resume last session. The canvas again chooses the closest display aspect ratio.
+  Favorite speed and your icon preference remain personal preferences.
+- **Paused loading**: local files, direct streams and resolved YouTube videos load
+  paused, ready for setup. Press master play when the pairing is aligned.
+- **Appearance…**: choose among six supplied Solid/Glass icons in Slate/Red,
+  Teal/Gold and Teal/Orange. The window and running taskbar icon change immediately
+  and the preference survives restart. The EXE and newly created default shortcuts use Teal/Orange
+  Solid; Windows may retain a pinned shortcut's own icon.
+
+All six transparent PNG originals are preserved in `FLP icons.zip`. The Windows
+build crops to the visible artwork (alpha ≥128), ignoring faint fringe pixels, with
+no added padding and the original proportions retained. It creates each size directly from its
+original using alpha-aware Lanczos-3 filtering, with gentle sharpening at small
+sizes. Every icon contains 16, 20, 24, 32, 40, 48, 64, 96, 128 and **256 pixel**
+32-bit RGBA frames. The 256×256 frame is the largest Windows desktop ICO frame;
+the smaller frames serve title bars, taskbars and different display scaling levels.
+Transparency is retained throughout. The older JPEGs are no longer build inputs.
+
+**PC check:** load each source type and confirm it stays paused; use New session
+while aligned or during H replay and confirm a blank default setup; try all six
+icons in Appearance and restart to confirm your selection is remembered.
+
+The requested default is now **Teal / Orange · Solid**.
+Previously saved icon choices remain respected, and all six choices remain in the
+picker. The transparent-source icon repair is ready for visual confirmation on Windows.
+
+## Saved settings and sessions (milestone 12)
 
 Milestone 11 audio matching and dialog fixes are confirmed on Gonz's PC and merged
 into `main`. Audio matching stays unchanged in this milestone.
@@ -40,7 +73,7 @@ Saving during “What Did They Say?” first restores your normal viewing settin
 
 ### Fullscreen viewing and complete playback
 
-Milestones 0–11 are confirmed on Gonz's PC and merged into `main`; new development
+Milestones 0–12 are confirmed on Gonz's PC and merged into `main`; new development
 uses small feature branches. The old LibVLC implementation remains in Git history.
 
 - At startup, choose the closest fixed canvas (16:9, 4:3 or 16:10) to the display
