@@ -37,12 +37,13 @@ internal sealed class SpeedNotice : Form
     {
         get { var cp = base.CreateParams; cp.ExStyle |= 0x08000000 | 0x20 | 0x80; return cp; } // No activate, click-through, tool window.
     }
-    internal void Display(Form owner, double speed, long now)
+    internal void Display(Form owner, string text, long now)
     {
-        caption.Text = speed.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "×";
+        caption.Text = text;
         shownAt = now; Opacity = .92;
         double scale = owner.DeviceDpi / 96.0;
-        Size = new Size((int)(130*scale), (int)(60*scale));
+        int textWidth = TextRenderer.MeasureText(text, caption.Font).Width;
+        Size = new Size(Math.Min(owner.ClientSize.Width-(int)(48*scale), Math.Max((int)(130*scale), textWidth+(int)(32*scale))), (int)(60*scale));
         var bounds = owner.RectangleToScreen(owner.ClientRectangle);
         Location = new Point(bounds.Right-Width-(int)(24*scale), bounds.Top+(int)(24*scale));
         if (!Visible) Show(owner);
@@ -89,7 +90,21 @@ internal sealed partial class MainForm
     private void ShowSpeedNotice()
     {
         if (Fullscreen && Master.Snapshot() != null)
-            SpeedToast.Display(this, Reaction.Player?.Number("speed") ?? 1, Environment.TickCount64);
+            SpeedToast.Display(this, SpeedCaption(), Environment.TickCount64);
+    }
+    private string SpeedCaption() => (Reaction.Player?.Number("speed") ?? 1).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "×";
+    private void ShowVolumeNotice(PlayerPane pane)
+    {
+        if (Fullscreen)
+            SpeedToast.Display(this, $"{(pane == Reaction ? "Reaction A" : "Source B")} · {pane.Volume:0}%", Environment.TickCount64);
+    }
+    private void TriggerCommentaryReplay()
+    {
+        bool wasActive = Replay.Active;
+        Replay.Trigger();
+        RevealFullscreen();
+        if (Fullscreen && (wasActive || Replay.Active))
+            SpeedToast.Display(this, Replay.Active ? "What Did They Say? · 1×" : "Replay ended · " + SpeedCaption(), Environment.TickCount64);
     }
     [DllImport("user32.dll")] private static extern bool ClientToScreen(IntPtr hwnd, ref Point point);
 }

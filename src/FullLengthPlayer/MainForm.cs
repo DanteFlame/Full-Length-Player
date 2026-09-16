@@ -120,7 +120,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
         MasterButton("1× ↔ (A)", () => SharedSpeed.Toggle("normal", 1));
         MasterButton("Favorite ↔ (G)", () => SharedSpeed.Toggle("favorite", Preferences.Favorite));
         MasterButton("Favorite settings", EditFavorite);
-        replayButton.Click += (_, _) => { try { Replay.Trigger(); } catch (Exception e) { MessageBox.Show(this, e.Message, "Commentary replay"); } };
+        replayButton.Click += (_, _) => { try { TriggerCommentaryReplay(); } catch (Exception e) { MessageBox.Show(this, e.Message, "Commentary replay"); } };
         masterBar.Items.Add(replayButton);
         masterTimeline.MouseDown += (_, _) => masterDragging = true;
         masterTimeline.MouseUp += (_, _) => { masterDragging = false; SeekMasterTimeline(); };
@@ -314,7 +314,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
         if (keyData == Keys.F2) { SelectPane(Source); return true; }
         if (keyData == (Keys.Control | Keys.O)) { active.Open(); return true; }
         if ((keyData & Keys.Modifiers) != Keys.None && !shift) return false;
-        if (key == Keys.H && !shift) { Replay.Trigger(); RevealFullscreen(); return true; }
+        if (key == Keys.H && !shift) { TriggerCommentaryReplay(); return true; }
         if (key is Keys.A or Keys.S or Keys.D or Keys.G or Keys.J or Keys.L or Keys.K or Keys.Space or Keys.Left or Keys.Right or Keys.Oemcomma or Keys.OemPeriod)
             Replay.Cancel();
         if (key is Keys.J or Keys.L or Keys.K or Keys.Space or Keys.Left or Keys.Right) RevealFullscreen();
@@ -350,7 +350,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
         wheelRemainder += delta;
         int steps = wheelRemainder / 120;
         wheelRemainder %= 120;
-        if (steps != 0) pane.AdjustVolume(steps * 5);
+        if (steps != 0) { pane.AdjustVolume(steps * 5); ShowVolumeNotice(pane); }
         return true;
     }
     public bool PreFilterMessage(ref Message message)

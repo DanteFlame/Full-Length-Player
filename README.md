@@ -3,6 +3,17 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
+## Downloads
+
+Get the Windows ZIP from [Releases](https://github.com/DanteFlame/Full-Length-Player/releases).
+**v0.13.0** is the tested release; **v0.14.0-beta.1** adds fullscreen touch controls
+and feedback, pending Moonlight user testing. Extract the ZIP and run
+`FullLengthPlayer.exe`, keeping its accompanying files together.
+
+We publish numbered releases as the app improves: new feature versions advance the
+minor number, repairs advance the patch number, and betas identify builds awaiting
+user confirmation. Version 1.0 will mark a mature baseline, not the end of development.
+
 ## Current build: milestone 14 — fullscreen touch controls
 
 Milestone 13 is confirmed on the user’s PC and merged into `main`.
@@ -11,6 +22,8 @@ This build adds controls for desktop clicks and Moonlight taps in fullscreen:
 - Tap the centre third to play/pause both players. A centre double tap toggles once.
 - Double-tap the left or right third to seek both players back/forward five seconds,
   preserving locked alignment. A single side tap only reveals the timeline.
+- **Shift + scroll** shows the affected player and its updated volume percentage.
+- **H** confirms “What Did They Say? · 1×”; pressing H again confirms replay ended.
 - Use **Exit fullscreen** on the temporary timeline bar to return to setup.
 - **A/S/D/G** show the resulting shared speed in a top-right badge, which fades after
   about a second. Repeated presses update the badge and restart its display time.

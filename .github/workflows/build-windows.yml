@@ -12,7 +12,7 @@ jobs:
   dual-player:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     permissions:
-      contents: write # Draft preview downloads if Actions artifact storage is full.
+      contents: write # Publish versioned ZIPs only after Windows verification.
     runs-on: windows-2022
     timeout-minutes: 15
     defaults:
@@ -44,14 +44,11 @@ jobs:
           name: FullLengthPlayer-win-x64
           path: publish/FullLengthPlayer-win-x64.zip
           if-no-files-found: error
-      - name: Draft preview download if artifact storage is unavailable
-        if: steps.application.outcome == 'failure' && github.event_name == 'push' && github.ref == 'refs/heads/feature/milestone-14'
+      - name: Publish numbered releases after verification
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/milestone-14'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          $tag = 'milestone-14-preview-' + '${{ github.sha }}'.Substring(0, 12)
-          gh release create $tag 'publish/FullLengthPlayer-win-x64.zip' --draft --target '${{ github.sha }}' --title 'Milestone 14 fullscreen touch controls — Windows test build' --notes 'Windows tests passed. Adds fullscreen centre tap play/pause, left/right double tap five-second seeking, an exit button and fading playback-speed feedback.'
-          if ($LASTEXITCODE -ne 0) { throw 'Draft download creation failed.' }
+        run: ./scripts/publish-release.ps1 -Commit '${{ github.sha }}'
       - name: Collect startup diagnostics
         if: always()
         run: |

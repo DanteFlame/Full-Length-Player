@@ -46,6 +46,22 @@ internal static class TouchVerification
         }
         form.SpeedToast.Advance(Environment.TickCount64+1000,true); Check(form.SpeedToast.Visible && form.SpeedToast.Opacity<.92, "Notice did not fade.");
         form.SpeedToast.Advance(Environment.TickCount64+1300,true); Check(!form.SpeedToast.Visible, "Notice did not hide.");
+        var reactionPoint = At(.5,.1); var sourcePoint = At(.5,.7);
+        form.Reaction.SetVolume(50); form.Source.SetVolume(75);
+        form.HandleVolumeWheel(reactionPoint,120);
+        Check(form.SpeedToast.Caption == "Reaction A · 55%" && a.Number("volume")==55 && b.Number("volume")==75, "Reaction volume feedback/target wrong.");
+        form.HandleVolumeWheel(sourcePoint,-120);
+        Check(form.SpeedToast.Caption == "Source B · 70%" && a.Number("volume")==55 && b.Number("volume")==70, "Source volume feedback/target wrong.");
+        form.HandleVolumeWheel(sourcePoint,12000);
+        Check(form.SpeedToast.Caption == "Source B · 100%", "Volume feedback not clamped.");
+        double priorSpeed = a.Number("speed");
+        form.HandleShortcut(Keys.H,Point.Empty);
+        Check(form.Replay.Active && form.SpeedToast.Visible && form.SpeedToast.Caption=="What Did They Say? · 1×", "Replay trigger feedback missing.");
+        await Until(()=>a.Get("pause")=="no", "Replay did not resume.");
+        form.HandleShortcut(Keys.H,Point.Empty);
+        Check(!form.Replay.Active && form.SpeedToast.Caption.StartsWith("Replay ended · ") && a.Number("speed")==priorSpeed, "Replay cancellation feedback/restoration wrong.");
+        Check(a.Number("volume")==55 && b.Number("volume")==100, "Replay feedback changed restored volumes.");
+        Check(Form.ActiveForm == form, "Feedback stole keyboard focus.");
         // Pure gesture edge cases: centre double tap toggles once; unrelated taps don't pair.
         var gestures=new FullscreenGestures(); var size=new Size(900,600);
         Check(gestures.Tap(new Point(450,300),size,0,500,24)==1 && gestures.Tap(new Point(450,300),size,100,500,24)==0,"Centre double tap toggles twice.");
