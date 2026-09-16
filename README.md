@@ -1,20 +1,33 @@
-# Full-Length Player
+<h1><img src="https://raw.githubusercontent.com/DanteFlame/Full-Length-Player/main/docs/teal-orange-solid.png" width="80" alt="Full Length Player icon"> Full Length Player</h1>
 
-A Windows desktop app for watching a full-length reaction alongside your high-quality
-local movie or episode, with both audio tracks audible and the videos synchronized.
+**The reaction and the show. One viewing experience.**
+
+Watch your favourite full-length reactions alongside your own high-quality movie or
+episode—without juggling windows or constantly chasing the sync. Full Length Player
+brings both videos together in one Windows app, powered by MPV, with clean source
+audio, the reactors’ commentary and your subtitles all playing together.
+
+Make the screen your own: crop away empty room space, keep the reactors in view and
+give the show as much room as it deserves. Lock the alignment, find it automatically
+from shared audio, or tap **What Did They Say?** for a focused commentary replay.
+Then go fullscreen and enjoy the pairing—on your desktop or streamed to your iPad
+through Moonlight.
+
+[**Download for Windows**](https://github.com/DanteFlame/Full-Length-Player/releases)
 
 ## Downloads
 
 Get the Windows ZIP from [Releases](https://github.com/DanteFlame/Full-Length-Player/releases).
-**v0.13.0** is the tested release; **v0.14.0-beta.1** adds fullscreen touch controls
-and feedback, pending Moonlight user testing. Extract the ZIP and run
+**v0.13.0** is the stable release; **v0.14.0-beta.1** adds fullscreen touch controls
+and feedback and has now passed Moonlight user testing. Newer beta builds are listed
+alongside it for testing. Extract the ZIP and run
 `FullLengthPlayer.exe`, keeping its accompanying files together.
 
 We publish numbered releases as the app improves: new feature versions advance the
 minor number, repairs advance the patch number, and betas identify builds awaiting
 user confirmation. Version 1.0 will mark a mature baseline, not the end of development.
 
-## Current build: milestone 14 — fullscreen touch controls
+## Milestone 14 — fullscreen touch controls
 
 Milestone 13 is confirmed on the user’s PC and merged into `main`.
 This build adds controls for desktop clicks and Moonlight taps in fullscreen:
