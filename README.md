@@ -3,7 +3,27 @@
 A Windows desktop app for watching a full-length reaction alongside your high-quality
 local movie or episode, with both audio tracks audible and the videos synchronized.
 
-## Current build: milestone 13 — session setup and app icons
+## Current build: milestone 14 — fullscreen touch controls
+
+Milestone 13 is confirmed on the user’s PC and merged into `main`.
+This build adds controls for desktop clicks and Moonlight taps in fullscreen:
+
+- Tap the centre third to play/pause both players. A centre double tap toggles once.
+- Double-tap the left or right third to seek both players back/forward five seconds,
+  preserving locked alignment. A single side tap only reveals the timeline.
+- Use **Exit fullscreen** on the temporary timeline bar to return to setup.
+- **A/S/D/G** show the resulting shared speed in a top-right badge, which fades after
+  about a second. Repeated presses update the badge and restart its display time.
+
+Timeline controls remain directly usable. Drags and clicks outside fullscreen do
+not trigger these gestures. Moonlight must send taps as ordinary left mouse clicks;
+its remote input mode determines how touch gestures are translated.
+
+**PC check:** tap over both videos; double-tap each side while paused and playing;
+check alignment stays locked; scrub the timeline; use the exit button; try A/S/D/G
+rapidly and verify the speed badge updates, fades, and never steals keyboard focus.
+
+## Milestone 13 — session setup and app icons
 
 Milestone 12 is confirmed with a remote reaction and local source pairing and merged
 into `main`. This build adds:

@@ -45,7 +45,8 @@ internal sealed partial class MainForm : Form, IMessageFilter
     }
     internal void UpdateFullscreen(long now, Point pointer, bool focused)
     {
-        if (!Fullscreen || !focused) { Hud.Visible = false; if (cursorHidden) { Cursor.Show(); cursorHidden = false; } return; }
+        SpeedToast.Advance(now, Fullscreen && focused);
+        if (!Fullscreen || !focused) { pressPoint = null; gestures.Reset(); Hud.Visible = false; if (cursorHidden) { Cursor.Show(); cursorHidden = false; } return; }
         if (pointer != lastPointer) { lastPointer = pointer; RevealFullscreen(); }
         if (Hud.Dragging) RevealFullscreen();
         bool visible = now - fullscreenActivity < 2500;
@@ -142,6 +143,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
         Controls.Add(Hud);
         Hud.Seek += fraction => RunMaster(() => Master.SeekReaction(Master.TimelineStart + (Master.TimelineEnd - Master.TimelineStart) * fraction));
         Hud.Activity += RevealFullscreen;
+        Hud.ExitRequested += ToggleFullscreen;
         Resize += (_, _) => Hud.Bounds = new Rectangle(0, Math.Max(0, ClientSize.Height - Hud.Height), ClientSize.Width, Hud.Height);
         UpdateMaster();
         Reaction.Surface.MouseDown += (_, _) => ActiveControl = null;
@@ -227,6 +229,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
     }
     internal void ToggleFullscreen()
     {
+        gestures.Reset(); pressPoint = null; SpeedToast.Hide();
         SuspendLayout();
         if (!Fullscreen)
         {
@@ -336,6 +339,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
             case Keys.OemPeriod when !shift: Master.Nudge(MasterTransport.OffsetStep); break;
             default: return false;
         }
+        if (key is Keys.A or Keys.S or Keys.D or Keys.G) ShowSpeedNotice();
         return true;
     }
     internal bool HandleVolumeWheel(Point screen, int delta)
@@ -351,6 +355,13 @@ internal sealed partial class MainForm : Form, IMessageFilter
     }
     public bool PreFilterMessage(ref Message message)
     {
+        if (Enabled && Form.ActiveForm == this && Fullscreen && Control.ModifierKeys == Keys.None
+            && message.Msg is 0x0201 or 0x0202 or 0x0203)
+        {
+            long coordinates = message.LParam.ToInt64();
+            Point location = new(unchecked((short)(coordinates & 0xffff)), unchecked((short)((coordinates >> 16) & 0xffff)));
+            if (ClientToScreen(message.HWnd, ref location) && FullscreenPointer(message.Msg, location, Environment.TickCount64)) return true;
+        }
         if (message.Msg != 0x020A || !Enabled || Form.ActiveForm != this || Control.ModifierKeys != Keys.Shift) return false;
         long point = message.LParam.ToInt64();
         Point screen = new(unchecked((short)(point & 0xffff)), unchecked((short)((point >> 16) & 0xffff)));
@@ -377,6 +388,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
         if (cursorHidden) { Cursor.Show(); cursorHidden = false; }
         Application.RemoveMessageFilter(this);
         Replay.Cancel();
+        SpeedToast.Dispose();
         timer.Stop(); timer.Dispose();
         Reaction.Shutdown(); Source.Shutdown();
         Icon = null; chosenIcon?.Dispose(); chosenIcon = null;
