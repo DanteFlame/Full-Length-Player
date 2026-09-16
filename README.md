@@ -27,19 +27,19 @@ We publish numbered releases as the app improves: new feature versions advance t
 minor number, repairs advance the patch number, and betas identify builds awaiting
 user confirmation. Version 1.0 will mark a mature baseline, not the end of development.
 
-## Milestone 14 — fullscreen touch controls
+## Current build: v0.14.0-beta.2 — fullscreen hold controls
 
-Milestone 13 is confirmed on the user’s PC and merged into `main`.
-This build adds controls for desktop clicks and Moonlight taps in fullscreen:
+Milestone 14’s original tap controls and feedback are confirmed on the user’s PC.
+This update adds hold controls, faster top-left messages and clearer button contrast:
 
 - Tap the centre third to play/pause both players. A centre double tap toggles once.
 - Double-tap the left or right third to seek both players back/forward five seconds,
   preserving locked alignment. A single side tap only reveals the timeline.
 - **Shift + scroll** shows the affected player and its updated volume percentage.
 - **H** confirms “What Did They Say? · 1×”; pressing H again confirms replay ended.
-- Use **Exit fullscreen** on the temporary timeline bar to return to setup.
-- **A/S/D/G** show the resulting shared speed in a top-right badge, which fades after
-  about a second. Repeated presses update the badge and restart its display time.
+- Hold the left third for **1×**, or the right third for your **favorite speed**\n  (2× by default). After a 450ms hold, both players switch speed until you release.\n  Release, moving away, losing focus or exiting fullscreen restores the previous\n  speed. Short taps and double-tap seeks remain unchanged.\n- Use **Exit fullscreen** on the temporary timeline bar to return to setup.
+- **A/S/D/G** show the resulting shared speed in a top-left badge, which disappears after
+  **0.6 seconds** (including its fade). Repeated presses update the badge and restart its display time.
 
 Timeline controls remain directly usable. Drags and clicks outside fullscreen do
 not trigger these gestures. Moonlight must send taps as ordinary left mouse clicks;

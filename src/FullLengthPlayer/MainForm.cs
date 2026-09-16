@@ -45,6 +45,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
     }
     internal void UpdateFullscreen(long now, Point pointer, bool focused)
     {
+        AdvanceSpeedHold(now, pointer, focused);
         SpeedToast.Advance(now, Fullscreen && focused);
         if (!Fullscreen || !focused) { pressPoint = null; gestures.Reset(); Hud.Visible = false; if (cursorHidden) { Cursor.Show(); cursorHidden = false; } return; }
         if (pointer != lastPointer) { lastPointer = pointer; RevealFullscreen(); }
@@ -78,6 +79,10 @@ internal sealed partial class MainForm : Form, IMessageFilter
         });
         Reaction.MediaReplaced += SharedSpeed.Reset;
         Source.MediaReplaced += SharedSpeed.Reset;
+        Reaction.MediaReplaced += () => CancelSpeedHold(false);
+        Source.MediaReplaced += () => CancelSpeedHold(false);
+        Deactivate += (_, _) => { CancelSpeedHold(false); SpeedToast.Hide(); };
+        MouseCaptureChanged += (_, _) => { if (!Capture) CancelSpeedHold(false); };
         Reaction.ManualTransport += () => Master.Unlock("Unlocked by independent control — relock after aligning");
         Source.ManualTransport += () => Master.Unlock("Unlocked by independent control — relock after aligning");
         void SyncButton(string text, Action action)
@@ -229,7 +234,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
     }
     internal void ToggleFullscreen()
     {
-        gestures.Reset(); pressPoint = null; SpeedToast.Hide();
+        CancelSpeedHold(false); gestures.Reset(); SpeedToast.Hide();
         SuspendLayout();
         if (!Fullscreen)
         {
@@ -308,6 +313,8 @@ internal sealed partial class MainForm : Form, IMessageFilter
     internal bool HandleShortcut(Keys keyData, Point cursor)
     {
         if (restoringSession) return true;
+        if ((keyData & Keys.KeyCode) is Keys.A or Keys.S or Keys.D or Keys.G or Keys.H or Keys.J or Keys.K or Keys.L or Keys.Space or Keys.Left or Keys.Right)
+            CancelSpeedHold(false);
         bool shift = (keyData & Keys.Modifiers) == Keys.Shift;
         Keys key = keyData & Keys.KeyCode;
         if (keyData == Keys.F1) { SelectPane(Reaction); return true; }
@@ -384,6 +391,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
     }
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        CancelSpeedHold(false);
         SaveOnExit();
         if (cursorHidden) { Cursor.Show(); cursorHidden = false; }
         Application.RemoveMessageFilter(this);

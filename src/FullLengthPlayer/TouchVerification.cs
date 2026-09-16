@@ -44,8 +44,9 @@ internal static class TouchVerification
             Check(form.SpeedToast.Visible && form.SpeedToast.Caption==a.Number("speed").ToString("0.##",System.Globalization.CultureInfo.InvariantCulture)+"×", "Wrong/missing speed notice.");
             Check(a.Number("speed")==b.Number("speed"), "Speed changed one player only.");
         }
-        form.SpeedToast.Advance(Environment.TickCount64+1000,true); Check(form.SpeedToast.Visible && form.SpeedToast.Opacity<.92, "Notice did not fade.");
-        form.SpeedToast.Advance(Environment.TickCount64+1300,true); Check(!form.SpeedToast.Visible, "Notice did not hide.");
+        Check(form.SpeedToast.Left < form.Left + form.Width/2, "Notice is not at top left.");
+        form.SpeedToast.Advance(Environment.TickCount64+500,true); Check(form.SpeedToast.Visible && form.SpeedToast.Opacity<.92, "Notice did not fade.");
+        form.SpeedToast.Advance(Environment.TickCount64+650,true); Check(!form.SpeedToast.Visible, "Notice did not hide at half duration.");
         var reactionPoint = At(.5,.1); var sourcePoint = At(.5,.7);
         form.Reaction.SetVolume(50); form.Source.SetVolume(75);
         form.HandleVolumeWheel(reactionPoint,120);
@@ -63,6 +64,32 @@ internal static class TouchVerification
         Check(!form.Replay.Active && form.SpeedToast.Caption.StartsWith("Replay ended · ") && a.Number("speed")==priorSpeed, "Replay cancellation feedback/restoration wrong.");
         Check(a.Number("volume")==55 && b.Number("volume")==100, "Replay feedback changed restored volumes.");
         Check(Form.ActiveForm == form, "Feedback stole keyboard focus.");
+        if (a.Get("pause") != "yes") form.Master.TogglePause();
+        form.SharedSpeed.Set(1.5);
+        await Until(()=>a.Get("pause")=="yes" && b.Get("pause")=="yes" && a.Get("seeking")!="yes" && b.Get("seeking")!="yes", "Hold setup did not settle.");
+        double holdPosition = a.Number("time-pos");
+        foreach (double x in new[] {.9, .1})
+        {
+            Cursor.Position = At(x,.4);
+            mouse_event(2,0,0,0,UIntPtr.Zero);
+            try
+            {
+                await Until(()=>form.SpeedHoldActive, "Side hold did not activate.");
+                double expected = x>.5 ? form.Preferences.Favorite : 1;
+                Check(a.Number("speed")==expected && b.Number("speed")==expected, "Hold did not change both speeds.");
+                Check(a.Get("pause")=="yes" && b.Get("pause")=="yes", "Hold resumed paused playback.");
+            }
+            finally { mouse_event(4,0,0,0,UIntPtr.Zero); }
+            await Until(()=>!form.SpeedHoldActive && a.Number("speed")==1.5 && b.Number("speed")==1.5, "Release failed to restore speed.");
+            Check(Math.Abs(a.Number("time-pos")-holdPosition)<.1 && form.Master.Offset==2, "Hold release sought or changed alignment.");
+        }
+        // Focus loss and fullscreen exit must never leave a temporary speed behind.
+        form.FullscreenPointer(0x0201,At(.9,.4),Environment.TickCount64);
+        form.AdvanceSpeedHold(Environment.TickCount64+500,At(.9,.4),true);
+        Check(form.SpeedHoldActive,"Synthetic hold failed.");
+        form.AdvanceSpeedHold(Environment.TickCount64+600,At(.9,.4),false);
+        Check(!form.SpeedHoldActive && a.Number("speed")==1.5 && b.Number("speed")==1.5,"Focus loss retained hold speed.");
+        Check(form.Hud.ExitButton.ForeColor==Color.White && !form.Hud.ExitButton.UseVisualStyleBackColor, "Exit button contrast is theme-dependent.");
         // Pure gesture edge cases: centre double tap toggles once; unrelated taps don't pair.
         var gestures=new FullscreenGestures(); var size=new Size(900,600);
         Check(gestures.Tap(new Point(450,300),size,0,500,24)==1 && gestures.Tap(new Point(450,300),size,100,500,24)==0,"Centre double tap toggles twice.");
@@ -71,7 +98,9 @@ internal static class TouchVerification
         form.RevealFullscreen();
         var timeline=form.Hud.Timeline.PointToScreen(new Point(20,10));
         Check(!form.FullscreenPointer(0x0201,timeline,Environment.TickCount64),"Gesture stole HUD input.");
-        form.Hud.ExitButton.PerformClick(); Check(!form.Fullscreen && !form.SpeedToast.Visible,"Touch exit failed.");
+        form.FullscreenPointer(0x0201,At(.1,.4),Environment.TickCount64);
+        form.AdvanceSpeedHold(Environment.TickCount64+500,At(.1,.4),true);
+        form.Hud.ExitButton.PerformClick(); Check(!form.Fullscreen && !form.SpeedToast.Visible && !form.SpeedHoldActive && a.Number("speed")==1.5,"Touch exit failed to restore hold.");
         Check(!form.FullscreenPointer(0x0201,At(.5,.5),Environment.TickCount64),"Windowed click intercepted.");
     }
 }

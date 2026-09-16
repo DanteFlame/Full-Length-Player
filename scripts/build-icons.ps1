@@ -41,6 +41,9 @@ try {
                     $memory = [IO.MemoryStream]::new()
                     try { $bitmap.Save($memory,[Drawing.Imaging.ImageFormat]::Png); $frames += ,$memory.ToArray() }
                     finally { $memory.Dispose() }
+                    if ($entry.Key -eq 'teal-orange-solid' -and $size -eq 256) {
+                        Write-Host ('README_ICON:' + [Convert]::ToBase64String($frames[-1]))
+                    }
                     if ($size -in @(16,24,32,48,64,96)) {
                         $displaySize = [Math]::Min($size,72)
                         foreach ($shift in @(0,350)) {
