@@ -54,6 +54,7 @@ internal static class TouchVerification
         Check(form.SpeedToast.Caption == "Source B · 70%" && a.Number("volume")==55 && b.Number("volume")==70, "Source volume feedback/target wrong.");
         form.HandleVolumeWheel(sourcePoint,12000);
         Check(form.SpeedToast.Caption == "Source B · 100%", "Volume feedback not clamped.");
+        await Until(()=>a.Get("seeking") != "yes" && b.Get("seeking") != "yes", "Speed changes did not settle before replay.");
         double priorSpeed = a.Number("speed");
         form.HandleShortcut(Keys.H,Point.Empty);
         Check(form.Replay.Active && form.SpeedToast.Visible && form.SpeedToast.Caption=="What Did They Say? · 1×", "Replay trigger feedback missing.");
