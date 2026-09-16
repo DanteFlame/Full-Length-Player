@@ -45,15 +45,15 @@ internal sealed class SpeedNotice : Form
         int textWidth = TextRenderer.MeasureText(text, caption.Font).Width;
         Size = new Size(Math.Min(owner.ClientSize.Width-(int)(48*scale), Math.Max((int)(130*scale), textWidth+(int)(32*scale))), (int)(60*scale));
         var bounds = owner.RectangleToScreen(owner.ClientRectangle);
-        Location = new Point(bounds.Right-Width-(int)(24*scale), bounds.Top+(int)(24*scale));
+        Location = new Point(bounds.Left+(int)(24*scale), bounds.Top+(int)(24*scale));
         if (!Visible) Show(owner);
     }
     internal void Advance(long now, bool allowed)
     {
         if (!Visible) return;
         long age = now-shownAt;
-        if (!allowed || age >= 1200) { Hide(); return; }
-        Opacity = .92 * Math.Clamp((1200-age)/350.0, 0, 1);
+        if (!allowed || age >= 600) { Hide(); return; }
+        Opacity = .92 * Math.Clamp((600-age)/175.0, 0, 1);
     }
     protected override void Dispose(bool disposing)
     {
@@ -67,6 +67,11 @@ internal sealed partial class MainForm
     private readonly FullscreenGestures gestures = new();
     internal SpeedNotice SpeedToast { get; } = new();
     private Point? pressPoint;
+    private long pressAt;
+    private int pressZone;
+    private double? heldSpeed;
+    internal bool SpeedHoldActive => heldSpeed.HasValue;
+    private int ScreenZone(Point screen) => Math.Clamp(PointToClient(screen).X * 3 / Math.Max(1, ClientSize.Width), 0, 2);
     private int TapTolerance => Math.Max(SystemInformation.DoubleClickSize.Width, (int)(24*DeviceDpi/96.0));
     private bool IsGesturePoint(Point screen)
     {
@@ -75,10 +80,18 @@ internal sealed partial class MainForm
     }
     internal bool FullscreenPointer(int message, Point screen, long now)
     {
-        if (!IsGesturePoint(screen)) { pressPoint = null; gestures.Reset(); return false; }
-        if (message is 0x0201 or 0x0203) { pressPoint = screen; return true; }
+        if (message == 0x0202 && heldSpeed.HasValue) { CancelSpeedHold(); return true; }
+        if (!IsGesturePoint(screen)) { CancelSpeedHold(); gestures.Reset(); return false; }
+        if (message is 0x0201 or 0x0203)
+        {
+            CancelSpeedHold(false); pressPoint = screen; pressAt = now; pressZone = ScreenZone(screen);
+            Capture = true; return true;
+        }
         if (message != 0x0202) return false;
-        var start = pressPoint; pressPoint = null;
+        // Cover release just after the threshold but before the next timer tick.
+        AdvanceSpeedHold(now, screen, true);
+        if (heldSpeed.HasValue) { CancelSpeedHold(); return true; }
+        var start = pressPoint; pressPoint = null; Capture = false;
         if (start == null || Math.Abs(start.Value.X-screen.X)>TapTolerance || Math.Abs(start.Value.Y-screen.Y)>TapTolerance) { gestures.Reset(); return true; }
         int action = gestures.Tap(PointToClient(screen), ClientSize, now, SystemInformation.DoubleClickTime, TapTolerance);
         ActiveControl = null;
@@ -86,6 +99,33 @@ internal sealed partial class MainForm
         else if (action != 0) RunMaster(() => Master.Jump(action));
         else RevealFullscreen();
         return true;
+    }
+    internal void AdvanceSpeedHold(long now, Point screen, bool focused)
+    {
+        if (pressPoint is not { } start) return;
+        if (!Fullscreen || !focused || !Capture || !IsGesturePoint(screen)
+            || ScreenZone(screen) != pressZone || Math.Abs(start.X-screen.X)>TapTolerance || Math.Abs(start.Y-screen.Y)>TapTolerance)
+        { CancelSpeedHold(); gestures.Reset(); return; }
+        if (heldSpeed.HasValue || pressZone == 1 || now-pressAt < 450 || Master.Snapshot() == null) return;
+        Replay.Cancel();
+        heldSpeed = Reaction.Player?.Number("speed") ?? 1;
+        gestures.Reset();
+        try { Master.SetSpeed(pressZone == 0 ? 1 : Preferences.Favorite); ShowSpeedNotice(); }
+        catch { CancelSpeedHold(false); throw; }
+    }
+    internal void CancelSpeedHold(bool feedback = true)
+    {
+        var restore = heldSpeed; heldSpeed = null; pressPoint = null;
+        if (Capture) Capture = false;
+        if (restore is not { } speed) return;
+        if (Master.Snapshot() != null) Master.SetSpeed(speed);
+        else
+        {
+            string value = speed.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            Reaction.Player?.Set("speed", value); Source.Player?.Set("speed", value);
+        }
+        gestures.Reset();
+        if (feedback) ShowSpeedNotice();
     }
     private void ShowSpeedNotice()
     {

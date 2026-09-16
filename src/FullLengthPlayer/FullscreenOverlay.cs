@@ -8,7 +8,8 @@ internal sealed class FullscreenOverlay : Panel
     internal event Action<double>? Seek;
     internal event Action? Activity;
     internal event Action? ExitRequested;
-    internal Button ExitButton { get; } = new() { Text = "Exit fullscreen", Dock = DockStyle.Right, Width = 125 };
+    internal Button ExitButton { get; } = new() { Text = "Exit fullscreen", Dock = DockStyle.Right, Width = 125,
+        BackColor = Color.FromArgb(55,55,55), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, UseVisualStyleBackColor = false };
     internal FullscreenOverlay()
     {
         BackColor = Color.FromArgb(35, 35, 35); Height = 60; Visible = false;
