@@ -14,6 +14,8 @@ internal sealed partial class MainForm
             ShowSetupPage(page); await Task.Delay(200);
             Check(setupPages[page].Visible, "Selected setup page is hidden");
             Check(setupTabs.All(t => t.Visible && t.Width > 60), "Setup tabs clipped");
+            Check(!setupButton.IsOnOverflow && setupButton.Bounds.Width > 30, "Setup button hidden in overflow at normal size");
+            Check(sessionBar.Items.Cast<ToolStripItem>().Where(i => i.Text.StartsWith("Fullscreen")).All(i => !i.IsOnOverflow), "Fullscreen button hidden at normal size");
             Check(Composition.Width > 400 && Composition.Height > 400, "Preview lost usable space");
             using var shot = new Bitmap(ClientSize.Width, ClientSize.Height);
             using (var g = Graphics.FromImage(shot)) g.CopyFromScreen(PointToScreen(Point.Empty), Point.Empty, shot.Size);

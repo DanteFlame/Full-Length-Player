@@ -25,6 +25,17 @@ We publish numbered releases as the app improves: new feature versions advance t
 minor number, repairs advance the patch number, and betas identify builds awaiting
 user confirmation. Version 1.0 will mark a mature baseline, not the end of development.
 
+## UI preview: v0.15.0-beta.1
+
+The first compact-interface beta adds a dark theme and a collapsible **Setup** panel:
+**Media** for the two players, **Layout** for composition, and **Sync** for alignment.
+The shared timeline and transport now sit underneath the preview. Session actions
+are in **Session**, and extra speed actions are in **Speed**. Existing shortcuts,
+fullscreen gestures and saved sessions remain compatible.
+
+See the [UI guide and test checklist](docs/UI.md). The stable v0.14.0 release stays
+available while this new layout is tested.
+
 ## Stable v0.14.0 — fullscreen controls
 
 Milestone 14’s original tap controls and feedback are confirmed on the user’s PC.

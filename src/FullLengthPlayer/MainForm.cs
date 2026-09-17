@@ -307,8 +307,8 @@ internal sealed partial class MainForm : Form, IMessageFilter
     {
         var hit = Composition.HitPlayer(cursor);
         if (hit != null) return hit;
-        if (Reaction.RectangleToScreen(Reaction.ClientRectangle).Contains(cursor)) return Reaction;
-        if (Source.RectangleToScreen(Source.ClientRectangle).Contains(cursor)) return Source;
+        if (Reaction.Visible && Reaction.RectangleToScreen(Reaction.ClientRectangle).Contains(cursor)) return Reaction;
+        if (Source.Visible && Source.RectangleToScreen(Source.ClientRectangle).Contains(cursor)) return Source;
         return active;
     }
     internal bool HandleShortcut(Keys keyData, Point cursor)

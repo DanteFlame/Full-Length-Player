@@ -106,7 +106,7 @@ internal sealed class PlayerPane : UserControl
     {
         PlayerTheme.Apply(this);
         heading.Font = new Font("Segoe UI Semibold", 9f);
-        heading.Height = 30;
+        heading.Height = 44;
         status.ForeColor = PlayerTheme.Muted;
         timeline.AutoSize = false; timeline.Height = 28;
         volume.AutoSize = false; volume.Height = 26;
@@ -114,8 +114,9 @@ internal sealed class PlayerPane : UserControl
         var strip = Controls.OfType<ToolStrip>().First(s => s.Items.Cast<ToolStripItem>().Any(i => i.Text == "Open video"));
         var opening = new ToolStrip { Dock = DockStyle.Top };
         foreach (var item in strip.Items.Cast<ToolStripItem>().Take(3).ToArray()) opening.Items.Add(item);
-        Controls.Add(opening); opening.BringToFront();
+        Controls.Add(opening);
         Controls.SetChildIndex(heading, Controls.Count - 1);
+        Controls.SetChildIndex(opening, Controls.Count - 2);
         PlayerTheme.Apply(opening);
     }
     internal void Initialize(bool verification) { Player = new MpvPlayer(video.Handle, verification); StartPaused = !verification; }
@@ -130,7 +131,7 @@ internal sealed class PlayerPane : UserControl
     internal void SetActive(bool active)
     {
         heading.BackColor = active ? PlayerTheme.Raised : PlayerTheme.Surface;
-        heading.Text = $"{Role}{(active ? " • Independent shortcuts" : "")} — {fileName}";
+        heading.Text = $"{Role}{(active ? " • selected" : "")}\n{fileName}";
     }
     private void Execute(Action action)
     {

@@ -29,9 +29,11 @@ internal sealed partial class MainForm
         var fullscreenButton = new ToolStripButton("Fullscreen  ↗");
         fullscreenButton.Click += (_, _) => ToggleFullscreen();
         sessionBar.Items.Add(fullscreenButton);
-        sessionBar.Dock = DockStyle.Right; sessionBar.AutoSize = true;
-        var brand = new Label { Text = "FULL LENGTH PLAYER", Dock = DockStyle.Fill, Padding = new Padding(18, 0, 0, 0), TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI Semibold", 11f), AutoEllipsis = true };
-        appHeader.Controls.Add(brand); appHeader.Controls.Add(sessionBar);
+        sessionBar.Dock = DockStyle.Fill; sessionBar.AutoSize = false;
+        sessionBar.LayoutStyle = ToolStripLayoutStyle.HorizontalStackWithOverflow;
+        var brand = new Label { Text = "FULL LENGTH PLAYER", Dock = DockStyle.Left, Width = 260, Padding = new Padding(54, 0, 0, 0), TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI Semibold", 11f), AutoEllipsis = true };
+        brand.Paint += (_, e) => { if (Icon != null) { int size = (int)(32 * DeviceDpi / 96f); e.Graphics.DrawIcon(Icon, new Rectangle(12, (brand.Height - size) / 2, size, size)); } };
+        appHeader.Controls.Add(sessionBar); appHeader.Controls.Add(brand);
 
         // Existing handlers and keyboard mappings remain the source of behavior.
         foreach (ToolStripItem item in masterBar.Items.Cast<ToolStripItem>().ToArray())
@@ -68,8 +70,8 @@ internal sealed partial class MainForm
         foreach (var (name, input) in layoutInputs)
         {
             var row = new Panel { Width = 304, Height = 38, Margin = new Padding(0, 0, 0, 4) };
-            var label = new Label { Text = name, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-            input.Dock = DockStyle.Right; input.Width = 105;
+            var label = new Label { Text = name, Dock = DockStyle.Left, Width = 185, TextAlign = ContentAlignment.MiddleLeft };
+            input.Dock = DockStyle.None; input.Width = 105; input.Location = new Point(199, 7); input.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             row.Controls.Add(label); row.Controls.Add(input); compositionBar.Controls.Add(row);
         }
         foreach (var unused in oldLayout.Where(c => c.Parent == null)) unused.Dispose();
