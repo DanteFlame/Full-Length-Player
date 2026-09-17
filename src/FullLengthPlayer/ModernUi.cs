@@ -67,26 +67,41 @@ internal sealed partial class MainForm
         compositionBar.FlowDirection = FlowDirection.TopDown;
         var oldLayout = compositionBar.Controls.Cast<Control>().ToArray();
         compositionBar.Controls.Clear();
+        var settings = new TableLayoutPanel { Width = 304, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2, RowCount = 0, Margin = Padding.Empty, Padding = Padding.Empty };
+        settings.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 152));
+        settings.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 152));
+        int settingRow = 0;
+        void AddRow(int height) { settings.RowCount++; settings.RowStyles.Add(new RowStyle(SizeType.Absolute, height)); }
         void Group(string title, string[] keys)
         {
-            var group = new Panel { Width = 304, Height = 28 + ((keys.Length + 1) / 2) * 48, Margin = new Padding(0, 0, 0, 8) };
-            var label = new Label { Text = title, Location = new Point(0, 5), Width = 230, ForeColor = PlayerTheme.Muted };
-            var reset = new Button { Text = "Reset", Location = new Point(246, 0), Size = new Size(58, 25), AccessibleName = "Reset " + title };
+            AddRow(32);
+            var header = new Panel { Dock = DockStyle.Fill, Margin = Padding.Empty };
+            var reset = new Button { Text = "Reset", Dock = DockStyle.Right, Width = 58, AccessibleName = "Reset " + title };
+            var label = new Label { Text = title, UseMnemonic = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+            header.Controls.Add(label); header.Controls.Add(reset);
             reset.Click += (_, _) => ResetLayoutGroup(keys);
-            group.Controls.Add(label); group.Controls.Add(reset);
-            for (int i = 0; i < keys.Length; i++)
+            settings.Controls.Add(header, 0, settingRow++); settings.SetColumnSpan(header, 2);
+            for (int i = 0; i < keys.Length; i += 2)
             {
-                string key = keys[i]; var input = layoutInputs[key]; int x = (i % 2) * 156, y = 28 + (i / 2) * 48;
-                var caption = new Label { Text = key, Location = new Point(x, y), Size = new Size(148, 18) };
-                input.Dock = DockStyle.None; input.Anchor = AnchorStyles.Top | AnchorStyles.Left;
-                input.Location = new Point(x, y + 18); input.Width = 148;
-                group.Controls.Add(caption); group.Controls.Add(input);
+                AddRow(20); AddRow(28);
+                for (int column = 0; column < 2 && i + column < keys.Length; column++)
+                {
+                    string key = keys[i + column]; var input = layoutInputs[key];
+                    var caption = new Label { Text = key, Dock = DockStyle.Fill, Margin = new Padding(0, 2, 6, 0) };
+                    input.Dock = DockStyle.Top; input.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                    input.Margin = new Padding(0, 0, 6, 0);
+                    settings.Controls.Add(caption, column, settingRow);
+                    settings.Controls.Add(input, column, settingRow + 1);
+                }
+                settingRow += 2;
             }
-            compositionBar.Controls.Add(group);
+            AddRow(8); settingRow++;
         }
         Group("Canvas & source", new[] { "Canvas", "Source edge", "Source %" });
         Group("Reaction crop", new[] { "Crop top %", "Crop bottom %" });
         Group("Reaction framing", new[] { "Reaction zoom %", "Pan X %", "Pan Y %" });
+        compositionBar.Controls.Add(settings);
         foreach (var unused in oldLayout.Where(c => c.Parent == null)) unused.Dispose();
         compositionBar.Controls.Add(new Label { Text = "Drag a source corner to resize.\nThe reaction anchors to the opposite edge.\nF / F11 to view fullscreen.", Width = 300, Height = 72, Margin = new Padding(0, 12, 0, 0) });
         setupPages.Add(compositionBar);

@@ -17,6 +17,14 @@ internal sealed partial class MainForm
             Check(!setupButton.IsOnOverflow && setupButton.Bounds.Width > 30, "Setup button hidden in overflow at normal size");
             Check(sessionBar.Items.Cast<ToolStripItem>().Where(i => i.Text.StartsWith("Fullscreen")).All(i => !i.IsOnOverflow), "Fullscreen button hidden at normal size");
             Check(Composition.Width > 400 && Composition.Height > 400, "Preview lost usable space");
+            if (page == 1)
+                foreach (var (key, input) in layoutInputs)
+                {
+                    var rect = input.RectangleToScreen(input.ClientRectangle);
+                    Check(input.Visible && compositionBar.RectangleToScreen(compositionBar.ClientRectangle).Contains(rect), "Layout field clipped: " + key + " " + rect);
+                    for (Control? parent = input.Parent; parent != null && parent != compositionBar; parent = parent.Parent)
+                        Check(parent.RectangleToScreen(parent.ClientRectangle).Contains(rect), "Layout group clips " + key);
+                }
             using var shot = new Bitmap(ClientSize.Width, ClientSize.Height);
             using (var g = Graphics.FromImage(shot)) g.CopyFromScreen(PointToScreen(Point.Empty), Point.Empty, shot.Size);
             shot.Save(report + $".ui-{page}.png");
