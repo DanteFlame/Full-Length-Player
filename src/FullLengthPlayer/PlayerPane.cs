@@ -12,7 +12,7 @@ internal sealed class PlayerPane : UserControl
     private readonly ToolStripDropDownButton audio = new("Audio");
     private readonly ToolStripDropDownButton subtitles = new("Subtitles");
     private readonly MediaSlider volume = new() { Minimum = 0, Maximum = 100, Value = 100, WheelAdjust = true, Width = 120, Height = 28 };
-    private readonly Label volumeCaption = new() { AutoSize = true, Padding = new Padding(0, 6, 0, 0), Text = "Volume 100%" };
+    private readonly Label volumeCaption = new() { AutoSize = false, Width = 92, Height = 28, Padding = new Padding(0, 6, 0, 0), Text = "Volume 100%" };
     private readonly ToolTip fileTip = new();
     private string? playbackError;
     private bool dragging;

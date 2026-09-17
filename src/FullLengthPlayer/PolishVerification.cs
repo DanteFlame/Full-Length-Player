@@ -20,6 +20,9 @@ internal sealed partial class MainForm
         Check(Master.Locked && masterTimeline.SharedRange is { } overlap && overlap.Start >= 0 && overlap.End <= 1 && overlap.Start < overlap.End, "Overlap band missing");
         Check(SharedTimelineHint(.5).Contains("Both videos"), "Hover hint lost overlap meaning");
         var volume = Reaction.Controls.OfType<FlowLayoutPanel>().SelectMany(p => p.Controls.OfType<MediaSlider>()).Single();
+        Reaction.SetVolume(100); Reaction.UpdatePlayback(); int volumeLeft = volume.Left;
+        Reaction.SetVolume(9); Reaction.UpdatePlayback();
+        Check(volume.Left == volumeLeft, "Volume percentage shifted slider hit target");
         double sourceVolume = Source.Volume;
         await Click(volume, .35);
         Check(Math.Abs(Reaction.Volume - 35) <= 1 && Source.Volume == sourceVolume, "Volume slider did not isolate players");

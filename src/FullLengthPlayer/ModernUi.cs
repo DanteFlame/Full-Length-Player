@@ -100,7 +100,7 @@ internal sealed partial class MainForm
         }
         Group("Canvas & source", new[] { "Canvas", "Source edge", "Source %" });
         Group("Reaction crop", new[] { "Crop top %", "Crop bottom %" });
-        Group("Reaction framing", new[] { "Reaction zoom %", "Pan X %", "Pan Y %" });
+        Group("Reaction framing", new[] { "Pan X %", "Pan Y %", "Reaction zoom %" });
         compositionBar.Controls.Add(settings);
         foreach (var unused in oldLayout.Where(c => c.Parent == null)) unused.Dispose();
         compositionBar.Controls.Add(new Label { Text = "Drag a source corner to resize.\nThe reaction anchors to the opposite edge.\nF / F11 to view fullscreen.", Width = 300, Height = 72, Margin = new Padding(0, 12, 0, 0) });
