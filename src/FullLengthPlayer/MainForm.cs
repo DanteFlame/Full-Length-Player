@@ -145,6 +145,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
         Controls.Add(syncBar);
         Controls.Add(masterBar);
         BuildSessionControls();
+        BuildModernUi();
         Controls.Add(Hud);
         Hud.Seek += fraction => RunMaster(() => Master.SeekReaction(Master.TimelineStart + (Master.TimelineEnd - Master.TimelineStart) * fraction));
         Hud.Activity += RevealFullscreen;
@@ -250,7 +251,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
             FormBorderStyle = FormBorderStyle.Sizable;
             Bounds = windowBounds; WindowState = previousState;
         }
-        foreach (Control control in new Control[] { sessionBar, masterBar, syncBar, masterStatus, masterTimeline, compositionBar, playerControls, info }) control.Visible = !Fullscreen;
+        LayoutModernChrome();
         Composition.ShowHandles = !Fullscreen;
         ActiveControl = null;
         ResumeLayout(true); Composition.Arrange();
@@ -268,7 +269,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
     }
     private void UpdateMaster()
     {
-        replayButton.Text = Replay.Active ? "End commentary replay (H)" : "What Did They Say? (H)";
+        replayButton.Text = Replay.Active ? "End replay (H)" : "What Did They Say? (H)";
         var position = Master.Snapshot();
         double aSpeed = Reaction.Player?.Number("speed") ?? 1, bSpeed = Source.Player?.Number("speed") ?? 1;
         speedMenu.Text = Math.Abs(aSpeed - bSpeed) < 0.001 ? $"Speed: {aSpeed:0.##}×" : $"Speed A/B: {aSpeed:0.##}× / {bSpeed:0.##}×";
@@ -284,7 +285,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
         double elapsed = Master.TimelineTime - Master.TimelineStart, duration = Master.TimelineEnd - Master.TimelineStart;
         Hud.UpdatePosition(elapsed, duration);
         if (!masterDragging) masterTimeline.Value = duration > 0 ? (int)Math.Clamp(elapsed / duration * 10000, 0, 10000) : 0;
-        masterStatus.Text = $"Shared timeline: {TimeSpan.FromSeconds(Math.Max(0, elapsed)):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(Math.Max(0, duration)):hh\\:mm\\:ss} • Locked: both complete videos; each waits at its first/last frame";
+        masterStatus.Text = $"Shared timeline: {TimeSpan.FromSeconds(Math.Max(0, elapsed)):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(Math.Max(0, duration)):hh\\:mm\\:ss} • { (Master.Locked ? "Alignment locked" : "Alignment unlocked") }";
     }
     private void SelectPane(PlayerPane pane)
     {
