@@ -7,6 +7,7 @@ internal static class PlayerTheme
     internal static readonly Color Raised = Color.FromArgb(38, 47, 58);
     internal static readonly Color Ink = Color.FromArgb(233, 239, 245);
     internal static readonly Color Muted = Color.FromArgb(157, 173, 189);
+    internal static readonly Color Orange = Color.FromArgb(255, 166, 64);
     internal static readonly Color Accent = Color.FromArgb(66, 210, 195);
     internal static void Apply(Control control)
     {
@@ -18,6 +19,7 @@ internal static class PlayerTheme
             b.FlatAppearance.MouseOverBackColor = Color.FromArgb(49, 66, 77);
             b.Cursor = Cursors.Hand;
         }
+        if (control is TextBox text) { text.BorderStyle = BorderStyle.FixedSingle; text.BackColor = Raised; }
         if (control is ComboBox box) { box.FlatStyle = FlatStyle.Flat; box.BackColor = Raised; }
         if (control is NumericUpDown number) { number.BorderStyle = BorderStyle.FixedSingle; number.BackColor = Raised; }
         if (control is ToolStrip strip)
@@ -28,6 +30,14 @@ internal static class PlayerTheme
         }
         foreach (Control child in control.Controls) Apply(child);
     }
+    internal static void Dialog(Form form)
+    {
+        form.Font = new Font("Segoe UI", 9f); Apply(form);
+        foreach (Button button in Descendants(form).OfType<Button>())
+            if (button.DialogResult == DialogResult.OK || button.Text is "Analyze audio" or "Open stream") { button.BackColor = Accent; button.ForeColor = Background; }
+    }
+    private static IEnumerable<Control> Descendants(Control parent)
+    { foreach (Control child in parent.Controls) { yield return child; foreach (Control nested in Descendants(child)) yield return nested; } }
     private sealed class Colors : ProfessionalColorTable
     {
         public override Color ToolStripDropDownBackground => Surface;

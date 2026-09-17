@@ -8,10 +8,12 @@ internal sealed class PlayerPane : UserControl
     private readonly Panel video = new() { Dock = DockStyle.Fill, BackColor = Color.Black };
     private readonly Label heading = new() { Dock = DockStyle.Top, Height = 27, ForeColor = Color.White, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft };
     private readonly Label status = new() { Dock = DockStyle.Bottom, Height = 25, ForeColor = Color.White, AutoEllipsis = true };
-    private readonly TrackBar timeline = new() { Dock = DockStyle.Bottom, Height = 32, Maximum = 10000, TickStyle = TickStyle.None };
+    private readonly MediaSlider timeline = new() { Dock = DockStyle.Bottom, Height = 32, Maximum = 10000 };
     private readonly ToolStripDropDownButton audio = new("Audio");
     private readonly ToolStripDropDownButton subtitles = new("Subtitles");
-    private readonly TrackBar volume = new() { Minimum = 0, Maximum = 100, Value = 100, Width = 120, Height = 28, TickStyle = TickStyle.None };
+    private readonly MediaSlider volume = new() { Minimum = 0, Maximum = 100, Value = 100, Width = 120, Height = 28 };
+    private readonly Label volumeCaption = new() { AutoSize = true, Padding = new Padding(0, 6, 0, 0), Text = "Volume 100%" };
+    private readonly ToolTip fileTip = new();
     private string? playbackError;
     private bool dragging;
     private bool updatingVolume;
@@ -80,7 +82,7 @@ internal sealed class PlayerPane : UserControl
         audio.DropDownOpening += (_, _) => RefreshTrackMenu(false);
         subtitles.DropDownOpening += (_, _) => RefreshTrackMenu(true);
         var mixer = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 32, BackColor = SystemColors.Control, WrapContents = false };
-        mixer.Controls.Add(new Label { Text = "Volume", AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
+        mixer.Controls.Add(volumeCaption);
         volume.ValueChanged += (_, _) => { if (!updatingVolume) Execute(() => { int desired = volume.Value; VolumeEdited?.Invoke(); SetVolume(desired); }); };
         mixer.Controls.Add(volume);
         Controls.Add(video);
@@ -106,7 +108,12 @@ internal sealed class PlayerPane : UserControl
     {
         PlayerTheme.Apply(this);
         heading.Font = new Font("Segoe UI Semibold", 9f);
-        heading.Height = 44;
+        heading.Height = 48;
+        var accent = Role.StartsWith("Reaction") ? PlayerTheme.Accent : PlayerTheme.Orange;
+        heading.ForeColor = accent; timeline.Accent = volume.Accent = accent;
+        volume.AccessibleName = Role + " volume"; timeline.AccessibleName = Role + " timeline";
+        volume.HoverText = f => $"{Role} · {Math.Round(f * 100):0}%";
+        timeline.HoverText = f => TimeSpan.FromSeconds(f * (Player?.Number("duration") ?? 0)).ToString(@"hh\:mm\:ss");
         status.ForeColor = PlayerTheme.Muted;
         timeline.AutoSize = false; timeline.Height = 28;
         volume.AutoSize = false; volume.Height = 26;
@@ -131,6 +138,7 @@ internal sealed class PlayerPane : UserControl
     internal void SetActive(bool active)
     {
         heading.BackColor = active ? PlayerTheme.Raised : PlayerTheme.Surface;
+        fileTip.SetToolTip(heading, fileName);
         heading.Text = $"{Role}{(active ? " • selected" : "")}\n{fileName}";
     }
     private void Execute(Action action)
@@ -254,6 +262,14 @@ internal sealed class PlayerPane : UserControl
     internal void UpdatePlayback()
     {
         if (Player == null) return;
+        volumeCaption.Text = $"Volume {Volume:0}%";
+        foreach (var strip in Controls.OfType<ToolStrip>())
+            foreach (ToolStripItem item in strip.Items)
+            {
+                if (item.Text is "Play / Pause" or "▶ Play" or "Ⅱ Pause") { item.Text = Player.Get("pause") == "yes" ? "▶ Play" : "Ⅱ Pause"; item.ToolTipText = "Play / pause this player · Shift+K"; }
+                if (item.Text == "−5 s") item.ToolTipText = "Back five seconds · Shift+J";
+                if (item.Text == "+5 s") item.ToolTipText = "Forward five seconds · Shift+L";
+            }
         var error = Player.PollError();
         if (error != null) playbackError = fileName == "YouTube video"
             ? "YouTube stream unavailable — open the original video link again to refresh it."
@@ -271,6 +287,7 @@ internal sealed class PlayerPane : UserControl
     protected override void Dispose(bool disposing)
     {
         if (disposing) Shutdown();
+        if (disposing) fileTip.Dispose();
         base.Dispose(disposing);
     }
 }

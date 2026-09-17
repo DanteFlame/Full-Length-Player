@@ -72,5 +72,6 @@ internal sealed class NetworkSourceDialog : Form
             catch (ArgumentException e) { MessageBox.Show(this, e.Message, "Stream settings"); }
         };
         AcceptButton = open; CancelButton = cancel;
+        PlayerTheme.Dialog(this);
     }
 }

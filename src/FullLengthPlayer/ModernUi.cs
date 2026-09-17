@@ -67,13 +67,26 @@ internal sealed partial class MainForm
         compositionBar.FlowDirection = FlowDirection.TopDown;
         var oldLayout = compositionBar.Controls.Cast<Control>().ToArray();
         compositionBar.Controls.Clear();
-        foreach (var (name, input) in layoutInputs)
+        void Group(string title, string[] keys)
         {
-            var row = new Panel { Width = 304, Height = 38, Margin = new Padding(0, 0, 0, 4) };
-            var label = new Label { Text = name, Dock = DockStyle.Left, Width = 185, TextAlign = ContentAlignment.MiddleLeft };
-            input.Dock = DockStyle.None; input.Width = 105; input.Location = new Point(199, 7); input.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            row.Controls.Add(label); row.Controls.Add(input); compositionBar.Controls.Add(row);
+            var group = new Panel { Width = 304, Height = 30 + ((keys.Length + 1) / 2) * 58, Margin = new Padding(0, 0, 0, 12) };
+            var label = new Label { Text = title, Location = new Point(0, 5), Width = 230, ForeColor = PlayerTheme.Muted };
+            var reset = new Button { Text = "Reset", Location = new Point(246, 0), Size = new Size(58, 25), AccessibleName = "Reset " + title };
+            reset.Click += (_, _) => ResetLayoutGroup(keys);
+            group.Controls.Add(label); group.Controls.Add(reset);
+            for (int i = 0; i < keys.Length; i++)
+            {
+                string key = keys[i]; var input = layoutInputs[key]; int x = (i % 2) * 156, y = 32 + (i / 2) * 58;
+                var caption = new Label { Text = key, Location = new Point(x, y), Size = new Size(148, 20) };
+                input.Dock = DockStyle.None; input.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                input.Location = new Point(x, y + 21); input.Width = 148;
+                group.Controls.Add(caption); group.Controls.Add(input);
+            }
+            compositionBar.Controls.Add(group);
         }
+        Group("Canvas & source", new[] { "Canvas", "Source edge", "Source %" });
+        Group("Reaction crop", new[] { "Crop top %", "Crop bottom %" });
+        Group("Reaction framing", new[] { "Reaction zoom %", "Pan X %", "Pan Y %" });
         foreach (var unused in oldLayout.Where(c => c.Parent == null)) unused.Dispose();
         compositionBar.Controls.Add(new Label { Text = "Drag a source corner to resize.\nThe reaction anchors to the opposite edge.\nF / F11 to view fullscreen.", Width = 300, Height = 72, Margin = new Padding(0, 12, 0, 0) });
         setupPages.Add(compositionBar);
@@ -83,6 +96,18 @@ internal sealed partial class MainForm
             c.Margin = new Padding(0, 0, 0, 10);
             if (c is Button) { c.AutoSize = false; c.Size = new Size(300, 34); }
         }
+        void PairSync(string left, string right, int firstWidth)
+        {
+            var a = syncBar.Controls.OfType<Button>().Single(c => c.Text == left);
+            var b = syncBar.Controls.OfType<Button>().Single(c => c.Text == right);
+            int index = syncBar.Controls.GetChildIndex(a);
+            var row = new FlowLayoutPanel { Width = 300, Height = 36, WrapContents = false, Margin = new Padding(0, 0, 0, 10) };
+            a.Size = new Size(firstWidth, 34); b.Size = new Size(294 - firstWidth, 34);
+            a.Margin = new Padding(0, 0, 6, 0); b.Margin = Padding.Empty;
+            row.Controls.Add(a); row.Controls.Add(b); syncBar.Controls.Add(row); syncBar.Controls.SetChildIndex(row, index);
+        }
+        PairSync("Lock current alignment", "Unlock", 216);
+        PairSync("−0.05 s", "+0.05 s", 147);
         syncStatus.AutoSize = false; syncStatus.Size = new Size(300, 130);
         offsetInput.Width = 180;
         setupPages.Add(syncBar);
@@ -92,9 +117,41 @@ internal sealed partial class MainForm
         PlayerTheme.Apply(appHeader); PlayerTheme.Apply(transportPanel); PlayerTheme.Apply(inspector);
         masterStatus.ForeColor = PlayerTheme.Muted;
         Reaction.ApplyModernStyle(); Source.ApplyModernStyle();
+        masterBar.Items[1].Font = new Font("Segoe UI Semibold", 11f);
+        masterBar.Items[1].BackColor = PlayerTheme.Raised;
+        masterBar.Items[1].Padding = new Padding(12, 2, 12, 2);
+        masterBar.Items[1].ToolTipText = "Play / pause both · K or Space";
+        masterBar.Items[2].Text = "↶ 5s"; masterBar.Items[2].ToolTipText = "Back five seconds · J";
+        masterBar.Items[3].Text = "5s ↷"; masterBar.Items[3].ToolTipText = "Forward five seconds · L";
+        speedMenu.ToolTipText = "Shared speed · A / S / D / G";
+        replayButton.ToolTipText = "Commentary replay · H";
+        masterTimeline.AccessibleName = "Shared timeline";
+        masterTimeline.HoverText = SharedTimelineHint;
+        Hud.Timeline.HoverText = SharedTimelineHint;
         ShowSetupPage(0);
         Resize += (_, _) => LayoutModernChrome();
         ResumeLayout(true); LayoutModernChrome();
+    }
+    internal void ResetLayoutGroup(IEnumerable<string> keys)
+    {
+        foreach (string key in keys)
+        {
+            if (layoutInputs[key] is NumericUpDown number) number.Value = key switch { "Source %" => 70, "Reaction zoom %" => 100, _ => 0 };
+            else if (layoutInputs[key] is ComboBox choice) choice.SelectedIndex = key == "Canvas" ? ClosestCanvas(Screen.FromControl(this).Bounds.Size) : 0;
+        }
+        Composition.Arrange();
+    }
+    internal string SharedTimelineHint(double fraction)
+    {
+        double time = Math.Clamp(fraction, 0, 1) * Math.Max(0, Master.TimelineEnd - Master.TimelineStart);
+        string label = TimeSpan.FromSeconds(time).ToString(@"hh\:mm\:ss");
+        if (Master.Locked && Master.Snapshot() is { } p)
+        {
+            double aTime = time + Master.TimelineStart, bTime = aTime + Master.Offset;
+            bool a = aTime >= 0 && aTime <= p.ADuration, b = bTime >= 0 && bTime <= p.BDuration;
+            label += a && b ? " · Both videos (orange band)" : a ? " · Reaction only" : " · Source only";
+        }
+        return label;
     }
     internal void ShowSetupPage(int index)
     {

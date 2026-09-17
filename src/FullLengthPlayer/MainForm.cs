@@ -23,7 +23,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
     internal bool Fullscreen { get; private set; }
     private long nextUiUpdate;
     private readonly ToolStrip masterBar = new() { Dock = DockStyle.Top, GripStyle = ToolStripGripStyle.Hidden };
-    private readonly TrackBar masterTimeline = new() { Dock = DockStyle.Top, Height = 32, Maximum = 10000, TickStyle = TickStyle.None };
+    private readonly MediaSlider masterTimeline = new() { Dock = DockStyle.Top, Height = 32, Maximum = 10000 };
     private readonly Label masterStatus = new() { Dock = DockStyle.Top, Height = 24, ForeColor = Color.White, AutoEllipsis = true };
     private bool masterDragging;
     internal FullscreenOverlay Hud { get; } = new();
@@ -269,6 +269,15 @@ internal sealed partial class MainForm : Form, IMessageFilter
     }
     private void UpdateMaster()
     {
+        if (masterBar.Items.Count > 1) masterBar.Items[1].Text = Reaction.Player?.Get("pause") == "no" || Source.Player?.Get("pause") == "no" ? "Ⅱ Pause" : "▶ Play";
+        masterTimeline.SharedRange = Hud.Timeline.SharedRange = null;
+        if (Master.Locked && Master.Snapshot() is { } overlap)
+        {
+            double length = Math.Max(.001, Master.TimelineEnd - Master.TimelineStart);
+            double start = Math.Max(0, -Master.Offset), end = Math.Min(overlap.ADuration, overlap.BDuration - Master.Offset);
+            if (end > start) masterTimeline.SharedRange = Hud.Timeline.SharedRange = ((start - Master.TimelineStart) / length, (end - Master.TimelineStart) / length);
+        }
+        masterTimeline.Invalidate(); Hud.Timeline.Invalidate();
         replayButton.Text = Replay.Active ? "End replay (H)" : "What Did They Say? (H)";
         var position = Master.Snapshot();
         double aSpeed = Reaction.Player?.Number("speed") ?? 1, bSpeed = Source.Player?.Number("speed") ?? 1;
@@ -299,6 +308,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
         var field = new NumericUpDown { Left = 20, Top = 15, Width = 130, Minimum = 0.25m, Maximum = 4, Increment = 0.25m, DecimalPlaces = 2, Value = (decimal)Preferences.Favorite };
         var save = new Button { Text = "Save", Left = 190, Top = 60, DialogResult = DialogResult.OK };
         dialog.Controls.Add(field); dialog.Controls.Add(save); dialog.AcceptButton = save;
+        PlayerTheme.Dialog(dialog);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         Preferences.Save((double)field.Value);
         SharedSpeed.Reset();

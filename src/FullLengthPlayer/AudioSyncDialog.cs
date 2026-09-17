@@ -29,6 +29,7 @@ internal sealed class AudioSyncDialog : Form
         layout.Controls.Add(Instructions, 0, 0); layout.Controls.Add(consensus, 0, 1);
         layout.Controls.Add(status, 0, 2); layout.Controls.Add(buttons, 0, 3);
         Controls.Add(layout); CancelButton = close;
+        PlayerTheme.Dialog(this);
         start.Click += async (_, _) =>
         {
             start.Enabled = false; apply.Enabled = false; consensus.Enabled = false;

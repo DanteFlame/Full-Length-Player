@@ -37,9 +37,9 @@ internal sealed class SpeedNotice : Form
     {
         get { var cp = base.CreateParams; cp.ExStyle |= 0x08000000 | 0x20 | 0x80; return cp; } // No activate, click-through, tool window.
     }
-    internal void Display(Form owner, string text, long now)
+    internal void Display(Form owner, string text, long now, Color? accent = null)
     {
-        caption.Text = text;
+        caption.Text = text; caption.ForeColor = accent ?? PlayerTheme.Accent;
         shownAt = now; Opacity = .92;
         double scale = owner.DeviceDpi / 96.0;
         int textWidth = TextRenderer.MeasureText(text, caption.Font).Width;
@@ -136,7 +136,7 @@ internal sealed partial class MainForm
     private void ShowVolumeNotice(PlayerPane pane)
     {
         if (Fullscreen)
-            SpeedToast.Display(this, $"{(pane == Reaction ? "Reaction A" : "Source B")} · {pane.Volume:0}%", Environment.TickCount64);
+            SpeedToast.Display(this, $"{(pane == Reaction ? "Reaction A" : "Source B")} · {pane.Volume:0}%", Environment.TickCount64, pane == Reaction ? PlayerTheme.Accent : PlayerTheme.Orange);
     }
     private void TriggerCommentaryReplay()
     {

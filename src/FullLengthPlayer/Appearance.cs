@@ -66,15 +66,17 @@ internal sealed partial class MainForm
         {
             string id = AppIcons.Ids[i];
             using var icon = AppIcons.Load(id,128); var bitmap = icon.ToBitmap(); pictures.Add(bitmap);
-            var button = new Button { Width = 195, Height = 175, Image = bitmap, Text = AppIcons.Labels[i], TextImageRelation = TextImageRelation.ImageAboveText, Tag = id, FlatStyle = FlatStyle.Flat, BackColor = id == IconId ? Color.LightBlue : Color.White };
+            var button = new Button { Width = 195, Height = 175, Image = bitmap, Text = AppIcons.Labels[i], TextImageRelation = TextImageRelation.ImageAboveText, Tag = id, FlatStyle = FlatStyle.Flat, BackColor = id == IconId ? PlayerTheme.Raised : PlayerTheme.Surface };
             button.Click += (_, _) =>
             {
-                try { ApplyIcon(id); foreach (Button other in grid.Controls) other.BackColor = Equals(other.Tag, id) ? Color.LightBlue : Color.White; }
+                try { ApplyIcon(id); foreach (Button other in grid.Controls) { other.BackColor = Equals(other.Tag, id) ? PlayerTheme.Raised : PlayerTheme.Surface; other.FlatAppearance.BorderColor = Equals(other.Tag, id) ? PlayerTheme.Accent : PlayerTheme.Raised; } }
                 catch { MessageBox.Show(dialog, "The icon preference could not be saved.", "Appearance"); }
             };
             grid.Controls.Add(button);
         }
         dialog.Controls.Add(grid); dialog.Controls.Add(note); dialog.Controls.Add(close); dialog.AcceptButton = close; dialog.CancelButton = close;
+        PlayerTheme.Dialog(dialog);
+        foreach (Button button in grid.Controls) { button.BackColor = Equals(button.Tag, IconId) ? PlayerTheme.Raised : PlayerTheme.Surface; button.FlatAppearance.BorderSize = 1; button.FlatAppearance.BorderColor = Equals(button.Tag, IconId) ? PlayerTheme.Accent : PlayerTheme.Raised; }
         try { dialog.ShowDialog(this); } finally { foreach (var picture in pictures) picture.Dispose(); }
     }
     internal void NewSession()
