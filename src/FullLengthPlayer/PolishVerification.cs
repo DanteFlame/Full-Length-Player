@@ -3,7 +3,7 @@ namespace FullLengthPlayer;
 internal sealed partial class MainForm
 {
     [DllImport("user32.dll")] private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
-    internal async Task VerifyPolish()
+    internal async Task VerifyPolish(string report)
     {
         void Check(bool ok, string message) { if (!ok) throw new InvalidOperationException("UI polish: " + message); }
         async Task Click(Control control, double fraction)
@@ -33,7 +33,15 @@ internal sealed partial class MainForm
         using var url = new NetworkSourceDialog(true);
         url.Show(this); await Task.Delay(100);
         Check(url.BackColor == PlayerTheme.Surface && url.Controls.OfType<TextBox>().All(t => t.ForeColor == PlayerTheme.Ink), "URL dialog theme missing");
-        url.Close();
+        void CaptureDialog(Form dialog, string name)
+        {
+            using var shot = new Bitmap(dialog.ClientSize.Width, dialog.ClientSize.Height);
+            using (var graphics = Graphics.FromImage(shot)) graphics.CopyFromScreen(dialog.PointToScreen(Point.Empty), Point.Empty, shot.Size);
+            shot.Save(report + ".ui-" + name + ".png");
+        }
+        CaptureDialog(url, "url"); url.Close();
+        using var audio = new AudioSyncDialog(Reaction.CaptureAudio(), Source.CaptureAudio(), 10, 12, 40, 40);
+        audio.Show(this); await Task.Delay(100); CaptureDialog(audio, "audio"); audio.Close();
         ActiveControl = null;
     }
 }

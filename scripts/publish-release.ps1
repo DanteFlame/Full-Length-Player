@@ -4,6 +4,11 @@ $repo = 'DanteFlame/Full-Length-Player'
 [xml]$project = Get-Content 'src/FullLengthPlayer/FullLengthPlayer.csproj'
 $version = [string]$project.Project.PropertyGroup.Version
 if ($version -notmatch '^0\.[0-9]+\.[0-9]+(-beta\.[1-9][0-9]*)?$') { throw 'A numbered stable or beta version is required.' }
+# Stable builds are published from main; feature branches publish only betas.
+if (($env:GITHUB_REF -eq 'refs/heads/main' -and $version.Contains('-beta.')) -or
+    ($env:GITHUB_REF -like 'refs/heads/feature/*' -and !$version.Contains('-beta.'))) {
+    Write-Host 'Version is not intended for publication from this branch.'; exit 0
+}
 $tag = 'v' + $version
 $notes = "releases/$tag.md"
 if (!(Test-Path $notes)) { throw 'Release notes missing.' }

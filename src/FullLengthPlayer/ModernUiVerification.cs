@@ -29,7 +29,7 @@ internal sealed partial class MainForm
             using (var g = Graphics.FromImage(shot)) g.CopyFromScreen(PointToScreen(Point.Empty), Point.Empty, shot.Size);
             shot.Save(report + $".ui-{page}.png");
         }
-        await VerifyPolish();
+        await VerifyPolish(report);
         int width = Composition.Width;
         setupButton.Checked = false; await Task.Delay(100);
         Check(Composition.Width > width + 200, "Setup toggle did not expand preview");

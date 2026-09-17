@@ -25,13 +25,17 @@ We publish numbered releases as the app improves: new feature versions advance t
 minor number, repairs advance the patch number, and betas identify builds awaiting
 user confirmation. Version 1.0 will mark a mature baseline, not the end of development.
 
-## UI preview: v0.15.0-beta.1
+## UI preview: v0.15.0-beta.2
 
 The first compact-interface beta adds a dark theme and a collapsible **Setup** panel:
 **Media** for the two players, **Layout** for composition, and **Sync** for alignment.
 The shared timeline and transport now sit underneath the preview. Session actions
 are in **Session**, and extra speed actions are in **Speed**. Existing shortcuts,
 fullscreen gestures and saved sessions remain compatible.
+
+Beta.2 adds teal/orange player accents, slim sliders with hover timestamps and a
+shared-section band, visible volume percentages, grouped layout resets, shortcut
+tooltips and matching app dialogs. Beta.1 remains available in Releases for comparison.
 
 See the [UI guide and test checklist](docs/UI.md). The stable v0.14.0 release stays
 available while this new layout is tested.
