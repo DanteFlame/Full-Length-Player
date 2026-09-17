@@ -69,17 +69,17 @@ internal sealed partial class MainForm
         compositionBar.Controls.Clear();
         void Group(string title, string[] keys)
         {
-            var group = new Panel { Width = 304, Height = 30 + ((keys.Length + 1) / 2) * 58, Margin = new Padding(0, 0, 0, 12) };
+            var group = new Panel { Width = 304, Height = 28 + ((keys.Length + 1) / 2) * 48, Margin = new Padding(0, 0, 0, 8) };
             var label = new Label { Text = title, Location = new Point(0, 5), Width = 230, ForeColor = PlayerTheme.Muted };
             var reset = new Button { Text = "Reset", Location = new Point(246, 0), Size = new Size(58, 25), AccessibleName = "Reset " + title };
             reset.Click += (_, _) => ResetLayoutGroup(keys);
             group.Controls.Add(label); group.Controls.Add(reset);
             for (int i = 0; i < keys.Length; i++)
             {
-                string key = keys[i]; var input = layoutInputs[key]; int x = (i % 2) * 156, y = 32 + (i / 2) * 58;
-                var caption = new Label { Text = key, Location = new Point(x, y), Size = new Size(148, 20) };
+                string key = keys[i]; var input = layoutInputs[key]; int x = (i % 2) * 156, y = 28 + (i / 2) * 48;
+                var caption = new Label { Text = key, Location = new Point(x, y), Size = new Size(148, 18) };
                 input.Dock = DockStyle.None; input.Anchor = AnchorStyles.Top | AnchorStyles.Left;
-                input.Location = new Point(x, y + 21); input.Width = 148;
+                input.Location = new Point(x, y + 18); input.Width = 148;
                 group.Controls.Add(caption); group.Controls.Add(input);
             }
             compositionBar.Controls.Add(group);

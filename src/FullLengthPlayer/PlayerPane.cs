@@ -11,7 +11,7 @@ internal sealed class PlayerPane : UserControl
     private readonly MediaSlider timeline = new() { Dock = DockStyle.Bottom, Height = 32, Maximum = 10000 };
     private readonly ToolStripDropDownButton audio = new("Audio");
     private readonly ToolStripDropDownButton subtitles = new("Subtitles");
-    private readonly MediaSlider volume = new() { Minimum = 0, Maximum = 100, Value = 100, Width = 120, Height = 28 };
+    private readonly MediaSlider volume = new() { Minimum = 0, Maximum = 100, Value = 100, WheelAdjust = true, Width = 120, Height = 28 };
     private readonly Label volumeCaption = new() { AutoSize = true, Padding = new Padding(0, 6, 0, 0), Text = "Volume 100%" };
     private readonly ToolTip fileTip = new();
     private string? playbackError;
@@ -93,8 +93,9 @@ internal sealed class PlayerPane : UserControl
         Controls.Add(transport);
         Controls.Add(heading);
         timeline.MouseDown += (_, _) => { ActivatePane(); dragging = true; };
+        timeline.MouseCaptureChanged += (_, _) => { if (!timeline.Capture) dragging = false; };
         timeline.MouseUp += (_, _) => { dragging = false; Execute(SeekTimeline); };
-        timeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown) Execute(SeekTimeline); };
+        timeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown or Keys.Left or Keys.Right) Execute(SeekTimeline); };
         Enter += (_, _) => ActivatePane();
         heading.Click += (_, _) => ActivatePane();
         video.Click += (_, _) => ActivatePane();

@@ -128,8 +128,9 @@ internal sealed partial class MainForm : Form, IMessageFilter
         replayButton.Click += (_, _) => { try { TriggerCommentaryReplay(); } catch (Exception e) { MessageBox.Show(this, e.Message, "Commentary replay"); } };
         masterBar.Items.Add(replayButton);
         masterTimeline.MouseDown += (_, _) => masterDragging = true;
+        masterTimeline.MouseCaptureChanged += (_, _) => { if (!masterTimeline.Capture) masterDragging = false; };
         masterTimeline.MouseUp += (_, _) => { masterDragging = false; SeekMasterTimeline(); };
-        masterTimeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown) SeekMasterTimeline(); };
+        masterTimeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown or Keys.Left or Keys.Right) SeekMasterTimeline(); };
         Composition = new CompositionView(Reaction, Source);
         playerControls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         playerControls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));

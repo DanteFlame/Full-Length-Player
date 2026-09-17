@@ -11,6 +11,7 @@ internal sealed class MediaSlider : Control
     public int Minimum { get => minimum; set { minimum = value; Value = this.value; Invalidate(); } }
     public int Maximum { get => maximum; set { maximum = Math.Max(minimum, value); Value = this.value; Invalidate(); } }
     public int Value { get => value; set { int next = Math.Clamp(value, minimum, maximum); if (this.value == next) return; this.value = next; Invalidate(); ValueChanged?.Invoke(this, EventArgs.Empty); } }
+    internal bool WheelAdjust { get; set; }
     internal Color Accent { get; set; } = PlayerTheme.Accent;
     internal Func<double, string>? HoverText { get; set; }
     internal (double Start, double End)? SharedRange { get; set; }
@@ -39,7 +40,7 @@ internal sealed class MediaSlider : Control
     }
     protected override void OnMouseCaptureChanged(EventArgs e) { if (!Capture) dragging = false; base.OnMouseCaptureChanged(e); }
     protected override void OnMouseLeave(EventArgs e) { tip.Hide(this); base.OnMouseLeave(e); }
-    protected override void OnMouseWheel(MouseEventArgs e) { Value += Math.Sign(e.Delta) * 5; base.OnMouseWheel(e); }
+    protected override void OnMouseWheel(MouseEventArgs e) { if (WheelAdjust) Value += Math.Sign(e.Delta) * 5; base.OnMouseWheel(e); }
     protected override bool IsInputKey(Keys keyData) => (keyData & Keys.KeyCode) is Keys.Left or Keys.Right or Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown || base.IsInputKey(keyData);
     protected override void OnKeyDown(KeyEventArgs e)
     {

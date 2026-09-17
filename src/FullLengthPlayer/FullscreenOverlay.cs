@@ -19,7 +19,7 @@ internal sealed class FullscreenOverlay : Panel
         Timeline.MouseDown += (_, _) => { Dragging = true; Activity?.Invoke(); };
         Timeline.MouseUp += (_, _) => { Dragging = false; Activity?.Invoke(); Seek?.Invoke(Timeline.Value / 10000.0); };
         Timeline.MouseCaptureChanged += (_, _) => { if (!Timeline.Capture) Dragging = false; };
-        Timeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown) { Activity?.Invoke(); Seek?.Invoke(Timeline.Value / 10000.0); } };
+        Timeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown or Keys.Left or Keys.Right) { Activity?.Invoke(); Seek?.Invoke(Timeline.Value / 10000.0); } };
     }
     internal void UpdatePosition(double elapsed, double duration)
     {

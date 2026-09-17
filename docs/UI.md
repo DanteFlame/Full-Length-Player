@@ -17,8 +17,13 @@ Keyboard shortcuts, fullscreen taps/holds, Shift-wheel volume, transient feedbac
 1. Restore a saved session and compare composition, audio balance and alignment.
 2. Open local and remote media from Media; check track menus and independent seeking.
 3. Adjust every Layout field, resize a source corner and change canvas aspect.
-4. Capture/nudge alignment and open the audio analysis dialog from Sync.
-5. Hide Setup, enter fullscreen, then return; repeat with each setup tab selected.
-6. Check text and controls at your usual Windows scaling on 4:3 and 16:10 displays.
+4. Capture/nudge alignment and open the audio 
+## Beta.2 polish
 
-This is a first polish beta. Stable 0.14.0 remains the fallback while the new layout is tested.
+Reaction A uses teal, Source B uses orange. Their volume percentages are visible in Media and the matching colour appears in fullscreen volume feedback. Play/pause buttons reflect the current state; hovering controls shows shortcuts.
+
+Timelines show a timestamp while hovering or dragging. On the locked shared timeline, a thin orange band marks where both videos overlap. The tooltip identifies the shared section and either video's solo material. These are time labels, not thumbnail previews.
+
+Layout now groups canvas/source, reaction crop and reaction framing. Each Reset affects only that group. Cropping resets to zero; framing resets zoom to 100% and pan to zero. Canvas/source resets to the nearest display aspect, bottom anchor and 70% source size. Offset nudges are grouped together.
+
+App-owned URL, audio-analysis, favorite-speed and appearance dialogs use the same dark styling. Session open/save and media file pickers continue to follow Windows styling.
