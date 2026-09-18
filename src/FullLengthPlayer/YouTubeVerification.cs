@@ -33,6 +33,13 @@ internal static class YouTubeVerification
         for (int i = 0; i < 10; i++) form.Master.Nudge(-0.05);
         await Until(() => form.Master.Offset == -0.25, "Nudging accumulated decimal error.");
         const string id = "BaW_jenozKc", canonical = "https://www.youtube.com/watch?v=BaW_jenozKc";
+        Assert(YouTubeResolver.FormatSelection(0) == "bestvideo+bestaudio/best", "Default quality changed.");
+        foreach (int height in new[] { 480, 720, 1080 })
+        {
+            var arguments = YouTubeResolver.StartInfo(canonical, height).ArgumentList.ToArray();
+            Assert(arguments[Array.IndexOf(arguments, "--format") + 1] == $"bestvideo[height<={height}]+bestaudio/best[height<={height}]", "Quality cap could exceed requested resolution.");
+        }
+        try { YouTubeResolver.FormatSelection(123); throw new Exception("Invalid quality accepted."); } catch (ArgumentOutOfRangeException) { }
         foreach (var url in new[] { "https://youtu.be/" + id + "?si=tracking", canonical + "&list=PL123&t=7", "https://m.youtube.com/shorts/" + id, "https://www.youtube-nocookie.com/embed/" + id })
             Assert(YouTubeResolver.CanonicalUrl(url) == canonical, "YouTube URL normalization failed.");
         Assert(!YouTubeResolver.IsYouTube("https://youtube.com.example.org/watch?v=" + id), "Lookalike host accepted.");
@@ -50,9 +57,15 @@ internal static class YouTubeVerification
         }});
         var split = YouTubeResolver.Parse(json);
         Assert(split.AudioUrl != null, "Separate audio was discarded.");
-        await form.Reaction.LoadYouTube(canonical, (_, _) => Task.FromResult(split));
+        await form.Reaction.LoadYouTube(canonical, (_, _) => Task.FromResult(split), 720);
         await Until(() => a.Number("time-pos") > 0.5 && a.Number("video-params/w") > 0 && a.Number("audio-params/samplerate") > 0, "Split video/audio playback failed.");
         Assert(form.Reaction.CaptureMedia().Kind == "youtube" && form.Reaction.CaptureMedia().Location == canonical, "Session did not preserve the original YouTube link.");
+        var savedMedia = JsonSerializer.Deserialize<SavedMedia>(JsonSerializer.Serialize(form.Reaction.CaptureMedia()))!;
+        Assert(savedMedia.YouTubeHeight == 720, "Session lost YouTube quality cap.");
+        var diagnostic = PlaybackDiagnostics.Report(form.Reaction, form.Source);
+        Assert(diagnostic.Contains("\"youtubeMaximumHeight\": 720") && !diagnostic.Contains(canonical) && !diagnostic.Contains(server.BaseUrl) && !diagnostic.Contains(media), "Diagnostics missing cap or leaking media identity.");
+        using (var snapshot = JsonDocument.Parse(diagnostic))
+            Assert(snapshot.RootElement.GetProperty("reaction").GetProperty("openToFileLoadedMilliseconds").ValueKind == JsonValueKind.Number, "File-loaded timing unavailable after load.");
         var splitSample = await AudioAlignment.Decode(form.Reaction.CaptureAudio(), 2, 20, CancellationToken.None);
         Assert(splitSample.Length >= 19 * AudioAlignment.Rate, "Audio analysis lost external YouTube audio.");
         Assert(server.Accepted.Contains("/plain/audio-only.mka"), "MPV did not request external audio.");

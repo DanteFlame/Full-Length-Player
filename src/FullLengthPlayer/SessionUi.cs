@@ -16,6 +16,9 @@ internal sealed partial class MainForm
         var open = new ToolStripButton("Open session…");
         var resume = new ToolStripButton("Resume last session");
         sessionBar.Items.AddRange(new ToolStripItem[] { fresh, save, open, resume, appearance });
+        var diagnostics = new ToolStripButton("Playback diagnostics…");
+        diagnostics.Click += (_, _) => { using var dialog = new PlaybackDiagnostics(Reaction, Source); dialog.ShowDialog(this); };
+        sessionBar.Items.Add(diagnostics);
         Controls.Add(sessionBar);
         Reaction.MediaReplaced += () => { if (!restoringSession) failedRestore = false; };
         Source.MediaReplaced += () => { if (!restoringSession) failedRestore = false; };
@@ -117,7 +120,7 @@ internal sealed partial class MainForm
         }
         async Task Load(PlayerPane pane, SavedMedia media)
         {
-            if (media.Kind == "youtube") await pane.LoadYouTube(media.Location);
+            if (media.Kind == "youtube") await pane.LoadYouTube(media.Location, maximumHeight: media.YouTubeHeight);
             else if (media.Kind == "local") pane.LoadVideo(media.Location);
             else pane.LoadNetwork(NetworkSource.Parse(media.Location, media.Referer, string.Join("\n", media.Headers ?? Array.Empty<string>())));
         }

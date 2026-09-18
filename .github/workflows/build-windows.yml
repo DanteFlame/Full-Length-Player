@@ -48,7 +48,7 @@ jobs:
           path: publish/FullLengthPlayer-win-x64.zip
           if-no-files-found: error
       - name: Publish numbered releases after verification
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/milestone-15')
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/milestone-16')
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./scripts/publish-release.ps1 -Commit '${{ github.sha }}'
