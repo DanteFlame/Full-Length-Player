@@ -18,34 +18,38 @@ through Moonlight.
 ## Downloads
 
 Get the Windows ZIP from [Releases](https://github.com/DanteFlame/Full-Length-Player/releases).
-**v0.14.0** is the stable release, including the user-tested fullscreen controls.
+**v0.15.0** is the stable release, including the user-tested compact UI and eight-position anchoring.
 Extract the ZIP and run `FullLengthPlayer.exe`, keeping its accompanying files together.
 
 We publish numbered releases as the app improves: new feature versions advance the
 minor number, repairs advance the patch number, and betas identify builds awaiting
 user confirmation. Version 1.0 will mark a mature baseline, not the end of development.
 
-## UI preview: v0.15.0-beta.4
+## Stable v0.15.0 — compact UI and eight-position anchoring
 
-The first compact-interface beta adds a dark theme and a collapsible **Setup** panel:
+The compact interface adds a dark theme and a collapsible **Setup** panel:
 **Media** for the two players, **Layout** for composition, and **Sync** for alignment.
 The shared timeline and transport now sit underneath the preview. Session actions
 are in **Session**, and extra speed actions are in **Speed**. Existing shortcuts,
 fullscreen gestures and saved sessions remain compatible.
 
-The polished beta adds teal/orange player accents, slim sliders with hover timestamps and a
+The polished interface adds teal/orange player accents, slim sliders with hover timestamps and a
 shared-section band, visible volume percentages, grouped layout resets, shortcut
 tooltips and matching app dialogs. Beta.1 remains available in Releases for comparison.
 
-Beta.4 adds an eight-position source anchor picker in Layout: four corners and four edge centres.
+Layout includes an eight-position source anchor picker in Layout: four corners and four edge centres.
 Top/bottom positions place the reaction against the opposite vertical edge; left/right
 midpoints keep its existing vertical anchor. The reaction never shifts sideways automatically.
 New sessions remember all eight positions; old top/bottom sessions remain compatible.
 
-See the [UI guide and test checklist](docs/UI.md). The stable v0.14.0 release stays
-available while this new layout is tested.
+See the [UI guide and test checklist](docs/UI.md). Beta.4 was approved in user testing;
+v0.15.0 promotes that same functionality to stable. Earlier releases remain available.
 
-## Stable v0.14.0 — fullscreen controls
+Next planned milestone: reliability and performance, starting with investigation of
+YouTube startup/buffering and useful playback diagnostics. No playback tuning is bundled
+into this UI release.
+
+## Fullscreen controls (introduced in v0.14.0)
 
 Milestone 14’s original tap controls and feedback are confirmed on the user’s PC.
 This update adds hold controls, faster top-left messages and clearer button contrast:
