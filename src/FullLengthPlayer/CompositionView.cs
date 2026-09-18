@@ -13,7 +13,20 @@ internal sealed class CompositionView : Panel
     internal Rectangle ReactionBounds => reaction.Surface.Bounds;
     internal double CanvasAspect { get; set; } = 16.0 / 9;
     internal double SourceFraction { get; set; } = 0.7;
-    internal bool TopAnchor { get; set; }
+    private SourceAnchor sourceAnchor;
+    internal SourceAnchor AnchorPosition
+    {
+        get => sourceAnchor;
+        set
+        {
+            sourceAnchor = value;
+            if (AnchorRow != 1) ReactionBottom = AnchorRow == 0;
+        }
+    }
+    internal bool ReactionBottom { get; set; }
+    internal bool TopAnchor { get => AnchorPosition == SourceAnchor.Top; set => AnchorPosition = value ? SourceAnchor.Top : SourceAnchor.Bottom; }
+    internal int AnchorColumn => AnchorPosition switch { SourceAnchor.TopLeft or SourceAnchor.Left or SourceAnchor.BottomLeft => 0, SourceAnchor.TopRight or SourceAnchor.Right or SourceAnchor.BottomRight => 2, _ => 1 };
+    internal int AnchorRow => AnchorPosition switch { SourceAnchor.TopLeft or SourceAnchor.Top or SourceAnchor.TopRight => 0, SourceAnchor.Left or SourceAnchor.Right => 1, _ => 2 };
     internal double CropTop { get; set; }
     internal double CropBottom { get; set; }
     internal double Zoom { get; set; } = 1;
@@ -43,9 +56,7 @@ internal sealed class CompositionView : Panel
             {
                 if (!resizing || dragCorner != corner) return;
                 Point delta = new(Cursor.Position.X - dragStart.X, Cursor.Position.Y - dragStart.Y);
-                double dx = delta.X * (corner % 2 == 0 ? -2 : 2);
-                double dy = delta.Y * (corner < 2 ? -1 : 1) * Aspect(source);
-                double change = Math.Abs(dx) >= Math.Abs(dy) ? dx : dy;
+                double change = ResizeChange(corner, delta, Aspect(source));
                 SourceFraction = Math.Clamp((dragWidth + change) / Math.Max(1, canvas.Width), 0.15, 1);
                 Arrange(); ResizedSource?.Invoke();
             };
@@ -53,6 +64,13 @@ internal sealed class CompositionView : Panel
             grip.MouseCaptureChanged += (_, _) => { if (!grip.Capture) resizing = false; };
         }
         Resize += (_, _) => Arrange();
+    }
+    internal double ResizeChange(int corner, Point delta, double aspect)
+    {
+        int x = AnchorColumn == 1 ? (corner % 2 == 0 ? -2 : 2) : AnchorColumn == 0 ? (corner % 2 == 0 ? 0 : 1) : (corner % 2 == 0 ? -1 : 0);
+        int y = AnchorRow == 1 ? (corner < 2 ? -2 : 2) : AnchorRow == 0 ? (corner < 2 ? 0 : 1) : (corner < 2 ? -1 : 0);
+        double dx = delta.X * x, dy = delta.Y * y * aspect;
+        return Math.Abs(dx) >= Math.Abs(dy) ? dx : dy;
     }
     private static double Aspect(PlayerPane pane)
     {
@@ -70,17 +88,18 @@ internal sealed class CompositionView : Panel
         int top = (int)Math.Round(rh * CropTop);
         int visible = Math.Max(1, (int)Math.Round(rh * (1 - CropTop - CropBottom)));
         int maskHeight = Math.Min(height, visible);
-        mask.Bounds = new Rectangle(0, TopAnchor ? height - maskHeight : 0, width, maskHeight);
-        reaction.Surface.Bounds = new Rectangle((width - rw) / 2 + (int)(PanX * width), (TopAnchor ? maskHeight - visible - top : -top) + (int)(PanY * height), rw, rh);
+        mask.Bounds = new Rectangle(0, ReactionBottom ? height - maskHeight : 0, width, maskHeight);
+        reaction.Surface.Bounds = new Rectangle((width - rw) / 2 + (int)(PanX * width), (ReactionBottom ? maskHeight - visible - top : -top) + (int)(PanY * height), rw, rh);
         int sw = Math.Max(1, (int)Math.Round(Math.Min(width * SourceFraction, height * Aspect(source))));
         int sh = Math.Max(1, (int)Math.Round(sw / Aspect(source)));
-        source.Surface.Bounds = new Rectangle((width - sw) / 2, TopAnchor ? 0 : height - sh, sw, sh);
+        source.Surface.Bounds = new Rectangle(AnchorColumn * (width - sw) / 2, AnchorRow * (height - sh) / 2, sw, sh);
         int size = Math.Max(6, (int)(10 * DeviceDpi / 96.0));
         var rect = SourceBounds;
         for (int i = 0; i < grips.Length; i++)
         {
             grips[i].Bounds = new Rectangle(i % 2 == 0 ? rect.Left : rect.Right - size, i < 2 ? rect.Top : rect.Bottom - size, size, size);
-            grips[i].Visible = ShowHandles;
+            bool fixedCorner = AnchorColumn == (i % 2 == 0 ? 0 : 2) && AnchorRow == (i < 2 ? 0 : 2);
+            grips[i].Visible = ShowHandles && !fixedCorner;
         }
     }
     internal PlayerPane? HitPlayer(Point screen)

@@ -58,6 +58,7 @@ jobs:
           New-Item -ItemType Directory -Force test-results | Out-Null
           $logs = Join-Path $env:LOCALAPPDATA 'FullLengthPlayer/logs'
           if (Test-Path $logs) { Get-ChildItem $logs -File | ForEach-Object { Get-Content $_.FullName; Copy-Item $_.FullName "test-results/$($_.Name).txt" } }
+          Get-ChildItem 'test-results/*.ui-*.png' | ForEach-Object { Write-Host "UI_IMAGE:$($_.Name):$([Convert]::ToBase64String([IO.File]::ReadAllBytes($_.FullName)))" }
       - name: Upload launch and playback evidence
         continue-on-error: true
         if: always()

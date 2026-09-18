@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace FullLengthPlayer;
 internal sealed record SavedMedia(string Kind, string Location, string Referer, string[] Headers, double Position, string Audio, string Subtitles);
-internal sealed record SavedSettings(Dictionary<string, decimal> Numbers, int Anchor, int Canvas, double VolumeA, double VolumeB, string MuteA, string MuteB, double Speed);
+internal sealed record SavedSettings(Dictionary<string, decimal> Numbers, int Anchor, int Canvas, double VolumeA, double VolumeB, string MuteA, string MuteB, double Speed, bool ReactionBottom = false);
 internal sealed record SavedSession(int Version, SavedMedia A, SavedMedia B, SavedSettings Settings, bool Locked, double Offset, double Clock);
 internal static class SessionStore
 {
@@ -44,7 +44,7 @@ internal static class SessionStore
     }
     internal static void Validate(SavedSettings settings)
     {
-        if (settings.Numbers == null || settings.Anchor is < 0 or > 1 || settings.Canvas is < 0 or > 2
+        if (settings.Numbers == null || settings.Anchor is < 0 or > 7 || settings.Canvas is < 0 or > 2
             || !double.IsFinite(settings.Speed) || settings.Speed is < 0.25 or > 4
             || !double.IsFinite(settings.VolumeA) || settings.VolumeA is < 0 or > 100
             || !double.IsFinite(settings.VolumeB) || settings.VolumeB is < 0 or > 100

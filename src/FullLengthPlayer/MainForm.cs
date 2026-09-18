@@ -23,7 +23,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
     internal bool Fullscreen { get; private set; }
     private long nextUiUpdate;
     private readonly ToolStrip masterBar = new() { Dock = DockStyle.Top, GripStyle = ToolStripGripStyle.Hidden };
-    private readonly TrackBar masterTimeline = new() { Dock = DockStyle.Top, Height = 32, Maximum = 10000, TickStyle = TickStyle.None };
+    private readonly MediaSlider masterTimeline = new() { Dock = DockStyle.Top, Height = 32, Maximum = 10000 };
     private readonly Label masterStatus = new() { Dock = DockStyle.Top, Height = 24, ForeColor = Color.White, AutoEllipsis = true };
     private bool masterDragging;
     internal FullscreenOverlay Hud { get; } = new();
@@ -128,8 +128,9 @@ internal sealed partial class MainForm : Form, IMessageFilter
         replayButton.Click += (_, _) => { try { TriggerCommentaryReplay(); } catch (Exception e) { MessageBox.Show(this, e.Message, "Commentary replay"); } };
         masterBar.Items.Add(replayButton);
         masterTimeline.MouseDown += (_, _) => masterDragging = true;
+        masterTimeline.MouseCaptureChanged += (_, _) => { if (!masterTimeline.Capture) masterDragging = false; };
         masterTimeline.MouseUp += (_, _) => { masterDragging = false; SeekMasterTimeline(); };
-        masterTimeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown) SeekMasterTimeline(); };
+        masterTimeline.KeyUp += (_, e) => { if (e.KeyCode is Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown or Keys.Left or Keys.Right) SeekMasterTimeline(); };
         Composition = new CompositionView(Reaction, Source);
         playerControls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         playerControls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
@@ -145,6 +146,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
         Controls.Add(syncBar);
         Controls.Add(masterBar);
         BuildSessionControls();
+        BuildModernUi();
         Controls.Add(Hud);
         Hud.Seek += fraction => RunMaster(() => Master.SeekReaction(Master.TimelineStart + (Master.TimelineEnd - Master.TimelineStart) * fraction));
         Hud.Activity += RevealFullscreen;
@@ -214,7 +216,9 @@ internal sealed partial class MainForm : Form, IMessageFilter
             compositionBar.Controls.Add(box); layoutInputs[label] = box; return box;
         }
         canvasChoice = Choice("Canvas", new[] { "16:9", "4:3", "16:10" }, i => Composition.CanvasAspect = i switch { 0 => 16.0 / 9, 1 => 4.0 / 3, _ => 16.0 / 10 });
-        Choice("Source edge", new[] { "Bottom", "Top" }, i => Composition.TopAnchor = i == 1);
+        var anchors = new AnchorPicker();
+        anchors.SelectionChanged += () => { Composition.AnchorPosition = anchors.Selected; Composition.Arrange(); };
+        compositionBar.Controls.Add(anchors); layoutInputs["Source edge"] = anchors;
         NumericUpDown Number(string label, decimal value, decimal min, decimal max, Action<double> change)
         {
             compositionBar.Controls.Add(new Label { Text = label, AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
@@ -250,7 +254,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
             FormBorderStyle = FormBorderStyle.Sizable;
             Bounds = windowBounds; WindowState = previousState;
         }
-        foreach (Control control in new Control[] { sessionBar, masterBar, syncBar, masterStatus, masterTimeline, compositionBar, playerControls, info }) control.Visible = !Fullscreen;
+        LayoutModernChrome();
         Composition.ShowHandles = !Fullscreen;
         ActiveControl = null;
         ResumeLayout(true); Composition.Arrange();
@@ -268,7 +272,16 @@ internal sealed partial class MainForm : Form, IMessageFilter
     }
     private void UpdateMaster()
     {
-        replayButton.Text = Replay.Active ? "End commentary replay (H)" : "What Did They Say? (H)";
+        if (masterBar.Items.Count > 1) masterBar.Items[1].Text = Reaction.Player?.Get("pause") == "no" || Source.Player?.Get("pause") == "no" ? "Ⅱ Pause" : "▶ Play";
+        masterTimeline.SharedRange = Hud.Timeline.SharedRange = null;
+        if (Master.Locked && Master.Snapshot() is { } overlap)
+        {
+            double length = Math.Max(.001, Master.TimelineEnd - Master.TimelineStart);
+            double start = Math.Max(0, -Master.Offset), end = Math.Min(overlap.ADuration, overlap.BDuration - Master.Offset);
+            if (end > start) masterTimeline.SharedRange = Hud.Timeline.SharedRange = ((start - Master.TimelineStart) / length, (end - Master.TimelineStart) / length);
+        }
+        masterTimeline.Invalidate(); Hud.Timeline.Invalidate();
+        replayButton.Text = Replay.Active ? "End replay (H)" : "What Did They Say? (H)";
         var position = Master.Snapshot();
         double aSpeed = Reaction.Player?.Number("speed") ?? 1, bSpeed = Source.Player?.Number("speed") ?? 1;
         speedMenu.Text = Math.Abs(aSpeed - bSpeed) < 0.001 ? $"Speed: {aSpeed:0.##}×" : $"Speed A/B: {aSpeed:0.##}× / {bSpeed:0.##}×";
@@ -284,7 +297,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
         double elapsed = Master.TimelineTime - Master.TimelineStart, duration = Master.TimelineEnd - Master.TimelineStart;
         Hud.UpdatePosition(elapsed, duration);
         if (!masterDragging) masterTimeline.Value = duration > 0 ? (int)Math.Clamp(elapsed / duration * 10000, 0, 10000) : 0;
-        masterStatus.Text = $"Shared timeline: {TimeSpan.FromSeconds(Math.Max(0, elapsed)):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(Math.Max(0, duration)):hh\\:mm\\:ss} • Locked: both complete videos; each waits at its first/last frame";
+        masterStatus.Text = $"Shared timeline: {TimeSpan.FromSeconds(Math.Max(0, elapsed)):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(Math.Max(0, duration)):hh\\:mm\\:ss} • { (Master.Locked ? "Alignment locked" : "Alignment unlocked") }";
     }
     private void SelectPane(PlayerPane pane)
     {
@@ -298,6 +311,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
         var field = new NumericUpDown { Left = 20, Top = 15, Width = 130, Minimum = 0.25m, Maximum = 4, Increment = 0.25m, DecimalPlaces = 2, Value = (decimal)Preferences.Favorite };
         var save = new Button { Text = "Save", Left = 190, Top = 60, DialogResult = DialogResult.OK };
         dialog.Controls.Add(field); dialog.Controls.Add(save); dialog.AcceptButton = save;
+        PlayerTheme.Dialog(dialog);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         Preferences.Save((double)field.Value);
         SharedSpeed.Reset();
@@ -306,8 +320,8 @@ internal sealed partial class MainForm : Form, IMessageFilter
     {
         var hit = Composition.HitPlayer(cursor);
         if (hit != null) return hit;
-        if (Reaction.RectangleToScreen(Reaction.ClientRectangle).Contains(cursor)) return Reaction;
-        if (Source.RectangleToScreen(Source.ClientRectangle).Contains(cursor)) return Source;
+        if (Reaction.Visible && Reaction.RectangleToScreen(Reaction.ClientRectangle).Contains(cursor)) return Reaction;
+        if (Source.Visible && Source.RectangleToScreen(Source.ClientRectangle).Contains(cursor)) return Source;
         return active;
     }
     internal bool HandleShortcut(Keys keyData, Point cursor)

@@ -56,15 +56,17 @@ internal sealed partial class MainForm
         ["Reaction zoom %"] = (decimal)(Composition.Zoom * 100),
         ["Pan X %"] = (decimal)(Composition.PanX * 100),
         ["Pan Y %"] = (decimal)(Composition.PanY * 100)
-    }, Composition.TopAnchor ? 1 : 0, canvasChoice!.SelectedIndex,
-        Reaction.Volume, Source.Volume, Reaction.Player!.Get("mute") ?? "no", Source.Player!.Get("mute") ?? "no", Reaction.Player!.Number("speed"));
+    }, (int)Composition.AnchorPosition, canvasChoice!.SelectedIndex,
+        Reaction.Volume, Source.Volume, Reaction.Player!.Get("mute") ?? "no", Source.Player!.Get("mute") ?? "no", Reaction.Player!.Number("speed"), Composition.ReactionBottom);
     internal void ApplySettings(SavedSettings saved, bool restoreCanvas)
     {
         SessionStore.Validate(saved);
         foreach (var (key, value) in saved.Numbers)
             if (layoutInputs.TryGetValue(key, out var control) && control is NumericUpDown number)
                 number.Value = Math.Clamp(value, number.Minimum, number.Maximum);
-        ((ComboBox)layoutInputs["Source edge"]).SelectedIndex = saved.Anchor;
+        ((AnchorPicker)layoutInputs["Source edge"]).Selected = (SourceAnchor)saved.Anchor;
+        Composition.AnchorPosition = (SourceAnchor)saved.Anchor;
+        if (Composition.AnchorRow == 1) Composition.ReactionBottom = saved.ReactionBottom;
         if (restoreCanvas) canvasChoice!.SelectedIndex = saved.Canvas;
         Reaction.SetVolume(saved.VolumeA); Source.SetVolume(saved.VolumeB);
         Reaction.Player!.Set("mute", saved.MuteA); Source.Player!.Set("mute", saved.MuteB);
