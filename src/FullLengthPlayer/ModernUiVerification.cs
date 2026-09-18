@@ -30,6 +30,7 @@ internal sealed partial class MainForm
             shot.Save(report + $".ui-{page}.png");
         }
         await VerifyPolish(report);
+        await VerifyAnchors(report);
         int width = Composition.Width;
         setupButton.Checked = false; await Task.Delay(100);
         Check(Composition.Width > width + 200, "Setup toggle did not expand preview");

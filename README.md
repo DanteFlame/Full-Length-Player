@@ -25,7 +25,7 @@ We publish numbered releases as the app improves: new feature versions advance t
 minor number, repairs advance the patch number, and betas identify builds awaiting
 user confirmation. Version 1.0 will mark a mature baseline, not the end of development.
 
-## UI preview: v0.15.0-beta.3
+## UI preview: v0.15.0-beta.4
 
 The first compact-interface beta adds a dark theme and a collapsible **Setup** panel:
 **Media** for the two players, **Layout** for composition, and **Sync** for alignment.
@@ -36,6 +36,11 @@ fullscreen gestures and saved sessions remain compatible.
 The polished beta adds teal/orange player accents, slim sliders with hover timestamps and a
 shared-section band, visible volume percentages, grouped layout resets, shortcut
 tooltips and matching app dialogs. Beta.1 remains available in Releases for comparison.
+
+Beta.4 adds an eight-position source anchor picker in Layout: four corners and four edge centres.
+Top/bottom positions place the reaction against the opposite vertical edge; left/right
+midpoints keep its existing vertical anchor. The reaction never shifts sideways automatically.
+New sessions remember all eight positions; old top/bottom sessions remain compatible.
 
 See the [UI guide and test checklist](docs/UI.md). The stable v0.14.0 release stays
 available while this new layout is tested.

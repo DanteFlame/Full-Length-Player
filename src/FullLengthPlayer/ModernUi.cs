@@ -84,11 +84,11 @@ internal sealed partial class MainForm
             settings.Controls.Add(header, 0, settingRow++); settings.SetColumnSpan(header, 2);
             for (int i = 0; i < keys.Length; i += 2)
             {
-                AddRow(20); AddRow(28);
+                AddRow(20); AddRow(keys.Skip(i).Take(2).Contains("Source edge") ? 104 : 28);
                 for (int column = 0; column < 2 && i + column < keys.Length; column++)
                 {
                     string key = keys[i + column]; var input = layoutInputs[key];
-                    var caption = new Label { Text = key, Dock = DockStyle.Fill, Margin = new Padding(0, 2, 6, 0) };
+                    var caption = new Label { Text = key == "Source edge" ? "Source position" : key, Dock = DockStyle.Fill, Margin = new Padding(0, 2, 6, 0) };
                     input.Dock = DockStyle.Top; input.Anchor = AnchorStyles.Top | AnchorStyles.Left;
                     input.Margin = new Padding(0, 0, 6, 0);
                     settings.Controls.Add(caption, column, settingRow);
@@ -103,7 +103,7 @@ internal sealed partial class MainForm
         Group("Reaction framing", new[] { "Pan X %", "Pan Y %", "Reaction zoom %" });
         compositionBar.Controls.Add(settings);
         foreach (var unused in oldLayout.Where(c => c.Parent == null)) unused.Dispose();
-        compositionBar.Controls.Add(new Label { Text = "Drag a source corner to resize.\nThe reaction anchors to the opposite edge.\nF / F11 to view fullscreen.", Width = 300, Height = 72, Margin = new Padding(0, 12, 0, 0) });
+        compositionBar.Controls.Add(new Label { Text = "Drag a free source corner to resize.\nReaction opposes top/bottom positions.\nLeft/right preserve its vertical anchor.", Width = 300, Height = 60, Margin = new Padding(0, 8, 0, 0) });
         setupPages.Add(compositionBar);
         syncBar.Dock = DockStyle.Fill; syncBar.FlowDirection = FlowDirection.TopDown; syncBar.WrapContents = false;
         foreach (Control c in syncBar.Controls)
@@ -153,6 +153,7 @@ internal sealed partial class MainForm
         {
             if (layoutInputs[key] is NumericUpDown number) number.Value = key switch { "Source %" => 70, "Reaction zoom %" => 100, _ => 0 };
             else if (layoutInputs[key] is ComboBox choice) choice.SelectedIndex = key == "Canvas" ? ClosestCanvas(Screen.FromControl(this).Bounds.Size) : 0;
+            else if (layoutInputs[key] is AnchorPicker anchors) { anchors.Selected = SourceAnchor.Bottom; Composition.AnchorPosition = SourceAnchor.Bottom; }
         }
         Composition.Arrange();
     }

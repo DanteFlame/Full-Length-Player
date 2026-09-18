@@ -216,7 +216,9 @@ internal sealed partial class MainForm : Form, IMessageFilter
             compositionBar.Controls.Add(box); layoutInputs[label] = box; return box;
         }
         canvasChoice = Choice("Canvas", new[] { "16:9", "4:3", "16:10" }, i => Composition.CanvasAspect = i switch { 0 => 16.0 / 9, 1 => 4.0 / 3, _ => 16.0 / 10 });
-        Choice("Source edge", new[] { "Bottom", "Top" }, i => Composition.TopAnchor = i == 1);
+        var anchors = new AnchorPicker();
+        anchors.SelectionChanged += () => { Composition.AnchorPosition = anchors.Selected; Composition.Arrange(); };
+        compositionBar.Controls.Add(anchors); layoutInputs["Source edge"] = anchors;
         NumericUpDown Number(string label, decimal value, decimal min, decimal max, Action<double> change)
         {
             compositionBar.Controls.Add(new Label { Text = label, AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
