@@ -1,73 +1,89 @@
-name: Build Windows
+name: Recover verified UI beta release
 
 on:
   push:
-    paths-ignore:
-      - 'README.md'
-      - 'docs/**'
-  pull_request:
+    branches: [fix/beta3-release-upload]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  dual-player:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
-    permissions:
-      contents: write # Publish versioned ZIPs only after Windows verification.
+  publish:
     runs-on: windows-2022
-    timeout-minutes: 15
+    timeout-minutes: 20
     defaults:
       run:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: 411677168449714643504fbf0ebb1566cfed61b9
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - name: Publish self-contained Windows executable
+      - name: Build unchanged beta 3
         run: ./build.ps1 -SkipSmokeTest
-      - name: Package and extract deliverable
+      - name: Package and extract
         run: |
           Compress-Archive -Path publish/FullLengthPlayer-win-x64/* -DestinationPath publish/FullLengthPlayer-win-x64.zip
           Expand-Archive publish/FullLengthPlayer-win-x64.zip -DestinationPath 'publish/launch test'
-      - name: Verify packaged executable on Windows
+      - name: Verify window
         run: ./scripts/smoke-window.ps1 -Executable './publish/launch test/FullLengthPlayer.exe'
-      - name: Verify composition, playback and protected HLS
+      - name: Verify playback and UI
         run: ./scripts/smoke-playback.ps1 -Executable './publish/launch test/FullLengthPlayer.exe'
-      - name: Probe live public YouTube extraction
+      - name: Probe YouTube
         run: ./scripts/probe-youtube.ps1 -Executable './publish/launch test/FullLengthPlayer.exe'
-      - name: Upload verified application
-        id: application
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 7
-          name: FullLengthPlayer-win-x64
-          path: publish/FullLengthPlayer-win-x64.zip
-          if-no-files-found: error
-      - name: Publish numbered releases after verification
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/milestone-15')
+      - name: Upload with bounded HTTP transfer and verify before publication
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./scripts/publish-release.ps1 -Commit '${{ github.sha }}'
-      - name: Collect startup diagnostics
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repo = 'DanteFlame/Full-Length-Player'
+          $releaseId = 390948452
+          $expectedCommit = '411677168449714643504fbf0ebb1566cfed61b9'
+          $tag = 'v0.15.0-beta.3'
+          $name = 'FullLengthPlayer-win-x64.zip'
+          $file = "publish/$name"
+          $size = (Get-Item $file).Length
+          $hash = 'sha256:' + (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant()
+          $release = gh api "repos/$repo/releases/$releaseId" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot read release.' }
+          if ($release.tag_name -ne $tag -or $release.target_commitish -ne $expectedCommit) { throw 'Release target mismatch.' }
+          if (!$release.draft) { Write-Host 'Already published; leaving it unchanged.'; exit 0 }
+          $uploaded = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            $assets = gh api "repos/$repo/releases/$releaseId/assets" | ConvertFrom-Json
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect draft assets.' }
+            $asset = @($assets | Where-Object name -eq $name)
+            if ($asset.Count -gt 1) { throw 'Ambiguous release asset.' }
+            if ($asset.Count -eq 1) {
+              if ($asset[0].state -eq 'uploaded') {
+                if ($asset[0].size -ne $size -or ($asset[0].digest -and $asset[0].digest -ne $hash)) { throw 'Existing asset does not match this package.' }
+                $uploaded = $true
+                break
+              }
+              if ($asset[0].state -ne 'starter') { throw 'Unexpected asset state; refusing to replace it.' }
+              # Only remove the incomplete upload for this exact draft/name.
+              gh api --method DELETE "repos/$repo/releases/assets/$($asset[0].id)"
+              if ($LASTEXITCODE -ne 0) { throw 'Cannot clear incomplete upload.' }
+              Write-Host 'Cleared incomplete draft upload.'
+            }
+            Write-Host "Upload attempt $attempt of 3; $size bytes."
+            curl.exe --http1.1 --connect-timeout 20 --max-time 180 --silent --show-error --fail-with-body --request POST --header "Authorization: Bearer $env:GH_TOKEN" --header 'Content-Type: application/zip' --header 'Accept: application/vnd.github+json' --data-binary "@$file" --output upload-response.json --write-out 'HTTP %{http_code}; sent %{size_upload} bytes in %{time_total}s\n' "https://uploads.github.com/repos/$repo/releases/$releaseId/assets?name=$name"
+            if ($LASTEXITCODE -eq 0) {
+              $asset = Get-Content upload-response.json -Raw | ConvertFrom-Json
+              if ($asset.state -ne 'uploaded' -or $asset.size -ne $size -or ($asset.digest -and $asset.digest -ne $hash)) { throw 'Uploaded asset verification failed.' }
+              $uploaded = $true
+              break
+            }
+            Write-Host "Transfer failed on attempt $attempt."
+          }
+          if (!$uploaded) { throw 'Release upload failed after three bounded attempts. Draft retained.' }
+          gh api --method PATCH "repos/$repo/releases/$releaseId" -F draft=false -F prerelease=true -f make_latest=false --jq '.html_url'
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed.' }
+          Write-Host "Verified and published $tag ($hash)."
+      - name: Test summary
         if: always()
         run: |
-          New-Item -ItemType Directory -Force test-results | Out-Null
-          $logs = Join-Path $env:LOCALAPPDATA 'FullLengthPlayer/logs'
-          if (Test-Path $logs) { Get-ChildItem $logs -File | ForEach-Object { Get-Content $_.FullName; Copy-Item $_.FullName "test-results/$($_.Name).txt" } }
-          Get-ChildItem 'test-results/*.ui-*.png' | ForEach-Object { Write-Host "UI_IMAGE:$($_.Name):$([Convert]::ToBase64String([IO.File]::ReadAllBytes($_.FullName)))" }
-      - name: Upload launch and playback evidence
-        continue-on-error: true
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 7
-          name: window-launch-evidence
-          path: |
-            test-results/*.json
-            test-results/*.png
-            test-results/*.txt
-          if-no-files-found: error
+          if (Test-Path test-results) { Get-ChildItem test-results -Filter '*.json' | ForEach-Object { Get-Content $_.FullName } }
