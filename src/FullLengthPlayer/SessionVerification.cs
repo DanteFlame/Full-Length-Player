@@ -57,6 +57,19 @@ internal static class SessionVerification
             await form.RestoreSession(saved with { Locked = false });
             Check(!form.Master.Locked && Math.Abs(a.Number("time-pos") - saved.A.Position) < .1 && Math.Abs(b.Number("time-pos") - saved.B.Position) < .1, "Independent positions not restored.");
             await form.RestoreSession(saved);
+            using (var streams = new NetworkVerification(Path.GetDirectoryName(media)!))
+            {
+                var remote = saved with {
+                    A = saved.A with { Kind = "network", Location = streams.BaseUrl + "/plain/video.mkv", Referer = "", Headers = Array.Empty<string>() },
+                    B = saved.B with { Kind = "network", Location = streams.BaseUrl + "/plain/video.mkv", Referer = "", Headers = Array.Empty<string>() }
+                };
+                await form.RestoreSession(remote);
+                Check(form.Master.Locked && Math.Abs(a.Number("time-pos") - 15) < .2 && Math.Abs(b.Number("time-pos") - 11.75) < .2, "Dual remote locked restore lost alignment");
+                Check(a.Get("pause") == "yes" && b.Get("pause") == "yes" && form.RestoreStatus == "Completed (paused)", "Dual remote restore did not finish paused");
+                await form.RestoreSession(remote with { Locked = false });
+                Check(Math.Abs(a.Number("time-pos") - remote.A.Position) < .2 && Math.Abs(b.Number("time-pos") - remote.B.Position) < .2, "Dual remote independent positions incorrect");
+            }
+            await form.RestoreSession(saved);
             form.Replay.Trigger(); await Until(() => form.Replay.Active);
             var duringReplay = form.CaptureSession();
             Check(!form.Replay.Active && duringReplay.Settings.Speed == 1.75 && duringReplay.Settings.VolumeA == 45 && duringReplay.Settings.VolumeB == 85, "Temporary replay settings leaked into save.");

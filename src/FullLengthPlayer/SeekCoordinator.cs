@@ -6,7 +6,7 @@ namespace FullLengthPlayer;
 internal sealed class SeekCoordinator
 {
     private sealed record Pending(MpvPlayer A, MpvPlayer B, double ATarget, double BTarget,
-        bool PlayA, bool PlayB, bool FollowReaction, bool HoldSource, bool HoldReaction, long Started);
+        bool PlayA, bool PlayB, bool FollowReaction, bool HoldSource, bool HoldReaction, long Started, int TimeoutMilliseconds);
     private Pending? pending;
     private int readyTicks;
     internal bool Waiting => pending != null;
@@ -19,7 +19,7 @@ internal sealed class SeekCoordinator
         bool play = !p.PlayA && !p.PlayB;
         pending = p with { PlayA = play && !p.HoldReaction, PlayB = play && !p.HoldSource };
     }
-    internal void Begin(MasterTransport.Position p, double aTarget, double bTarget, bool seekA = true, bool followReaction = false, bool holdSource = false, bool holdReaction = false)
+    internal void Begin(MasterTransport.Position p, double aTarget, double bTarget, bool seekA = true, bool followReaction = false, bool holdSource = false, bool holdReaction = false, int timeoutMilliseconds = 15000)
     {
         bool playA = pending?.PlayA ?? p.A.Get("pause") != "yes";
         bool playB = pending?.PlayB ?? p.B.Get("pause") != "yes";
@@ -34,12 +34,12 @@ internal sealed class SeekCoordinator
         // If a command fails, leave both safely paused instead of resuming half a seek.
         if (seekA) p.A.Command("seek", aTarget.ToString(CultureInfo.InvariantCulture), "absolute+exact");
         p.B.Command("seek", bTarget.ToString(CultureInfo.InvariantCulture), "absolute+exact");
-        pending = new Pending(p.A, p.B, aTarget, bTarget, playA, playB, followReaction, holdSource, holdReaction, Environment.TickCount64);
+        pending = new Pending(p.A, p.B, aTarget, bTarget, playA, playB, followReaction, holdSource, holdReaction, Environment.TickCount64, timeoutMilliseconds);
     }
     internal string? Tick()
     {
         if (pending is not { } p) return null;
-        if (Environment.TickCount64 - p.Started > 15000)
+        if (Environment.TickCount64 - p.Started > p.TimeoutMilliseconds)
         {
             Cancel(); return "Seek timed out — both paused; retry the shared seek";
         }

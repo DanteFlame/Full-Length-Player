@@ -3,12 +3,13 @@ namespace FullLengthPlayer;
 
 internal sealed class PlaybackDiagnostics : Form
 {
-    internal static string Report(PlayerPane reaction, PlayerPane source) => JsonSerializer.Serialize(new {
+    internal static string Report(PlayerPane reaction, PlayerPane source, string? restoreStatus = null) => JsonSerializer.Serialize(new {
         applicationVersion = typeof(PlaybackDiagnostics).Assembly.GetName().Version?.ToString(),
+        sessionRestoreStage = restoreStatus,
         reaction = reaction.DiagnosticSnapshot(), source = source.DiagnosticSnapshot()
     }, new JsonSerializerOptions { WriteIndented = true });
 
-    internal PlaybackDiagnostics(PlayerPane reaction, PlayerPane source)
+    internal PlaybackDiagnostics(PlayerPane reaction, PlayerPane source, Func<string>? restoreStatus = null)
     {
         Text = "Playback diagnostics"; ClientSize = new Size(680, 520); MinimumSize = new Size(540, 400);
         StartPosition = FormStartPosition.CenterParent;
@@ -18,10 +19,10 @@ internal sealed class PlaybackDiagnostics : Form
         var close = new Button { Text = "Close", DialogResult = DialogResult.Cancel };
         var copy = new Button { Text = "Copy report", AutoSize = true };
         var refresh = new Button { Text = "Refresh" };
-        refresh.Click += (_, _) => text.Text = Report(reaction, source);
+        refresh.Click += (_, _) => text.Text = Report(reaction, source, restoreStatus?.Invoke());
         copy.Click += (_, _) => { try { Clipboard.SetText(text.Text); } catch { MessageBox.Show(this, "Clipboard unavailable. Select and copy the text manually.", "Copy report"); } };
         actions.Controls.AddRange(new Control[] { close, copy, refresh });
         Controls.Add(text); Controls.Add(note); Controls.Add(actions); CancelButton = close;
-        PlayerTheme.Dialog(this); text.Text = Report(reaction, source);
+        PlayerTheme.Dialog(this); text.Text = Report(reaction, source, restoreStatus?.Invoke());
     }
 }

@@ -307,6 +307,7 @@ internal sealed class PlayerPane : UserControl
             youtubeMaximumHeight = youTubeHeight, resolverMilliseconds,
             openToFileLoadedMilliseconds = openMilliseconds,
             paused = Player?.Get("pause") == "yes", buffering = Player?.Get("paused-for-cache") == "yes",
+            seeking = Player?.Get("seeking") == "yes",
             speed = Number("speed"), videoWidth = Number("video-params/w"), videoHeight = Number("video-params/h"),
             approximateBufferedSeconds = Number("demuxer-cache-duration"), mainInputBytesPerSecond = Number("cache-speed"),
             droppedDecoderFrames = Number("decoder-frame-drop-count"), droppedOutputFrames = Number("frame-drop-count")
