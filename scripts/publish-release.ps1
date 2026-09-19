@@ -23,13 +23,13 @@ else {
     gh release create $tag --repo $repo --draft --target $Commit --title "$tag — Full Length Player" --notes-file $notes
     if ($LASTEXITCODE -ne 0) { throw 'Release creation failed.' }
 }
-$releases = gh api "repos/$repo/releases?per_page=100" | ConvertFrom-Json
-if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect draft release.' }
-$matches = @($releases | Where-Object tag_name -eq $tag)
-if ($matches.Count -ne 1) { throw 'Cannot uniquely identify draft release.' }
-$release = $matches[0]
-$releaseId = $release.id
-if (!$release.draft -or $release.target_commitish -ne $Commit) { throw 'Draft target mismatch.' }
+# Resolve the exact tag through the CLI's draft-aware lookup, not the release list.
+$draftJson = gh release view $tag --repo $repo --json databaseId,tagName,isDraft,targetCommitish
+if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect exact draft release.' }
+$release = $draftJson | ConvertFrom-Json
+$releaseId = $release.databaseId
+if (!$release.isDraft -or $release.tagName -ne $tag -or $release.targetCommitish -ne $Commit -or
+    [string]$releaseId -notmatch '^[1-9][0-9]*$') { throw 'Draft identity or target mismatch.' }
 $name = 'FullLengthPlayer-win-x64.zip'
 $file = "publish/$name"
 $size = (Get-Item $file).Length
