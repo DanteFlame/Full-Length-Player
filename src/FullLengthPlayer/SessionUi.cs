@@ -18,7 +18,7 @@ internal sealed partial class MainForm
         var resume = new ToolStripButton("Resume last session");
         sessionBar.Items.AddRange(new ToolStripItem[] { fresh, save, open, resume, appearance });
         var diagnostics = new ToolStripButton("Playback diagnostics…");
-        diagnostics.Click += (_, _) => { using var dialog = new PlaybackDiagnostics(Reaction, Source, () => RestoreStatus); dialog.ShowDialog(this); };
+        diagnostics.Click += (_, _) => { using var dialog = new PlaybackDiagnostics(Reaction, Source, () => RestoreStatus, Master); dialog.ShowDialog(this); };
         sessionBar.Items.Add(diagnostics);
         Controls.Add(sessionBar);
         Reaction.MediaReplaced += () => { if (!restoringSession) failedRestore = false; };

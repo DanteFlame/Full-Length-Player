@@ -28,10 +28,15 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     {
         if (!double.IsFinite(speed) || speed < SpeedControl.Minimum || speed > SpeedControl.Maximum) throw new ArgumentOutOfRangeException(nameof(speed));
         var p = Snapshot() ?? throw new InvalidOperationException("Load both videos first.");
-        // Holding the pair through a locked change also preserves the stored offset.
-        if (Locked) SeekLocked(p, seeks.ATarget is { } pending ? (reactionHeld ? seeks.BTarget!.Value - Offset : pending) : Clock(p));
+        // Changing speed does not require a seek. Re-seeking here discards useful
+        // network read-ahead and can restart an already pending restore/seek.
+        // Briefly hold the pair while changing both rates, preserving pause/EOF
+        // state and leaving any existing seek coordinator's resume intent intact.
+        bool pausedA = p.A.Get("pause") == "yes", pausedB = p.B.Get("pause") == "yes";
+        p.A.Set("pause", "yes"); p.B.Set("pause", "yes");
         string value = speed.ToString(CultureInfo.InvariantCulture);
         p.A.Set("speed", value); p.B.Set("speed", value);
+        p.A.Set("pause", pausedA ? "yes" : "no"); p.B.Set("pause", pausedB ? "yes" : "no");
         Settle();
     }
     private const double Tolerance = 0.08;

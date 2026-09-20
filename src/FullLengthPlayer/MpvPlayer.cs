@@ -36,6 +36,10 @@ internal sealed class MpvPlayer : IDisposable
                 Option("hwdec", "auto-safe"); Option("keep-open", "yes");
                 Option("input-default-bindings", "no"); Option("input-vo-keyboard", "no");
                 Option("osc", "no");
+                // Network cache only (MPV's default cache=auto). Refill before
+                // starting/restarting instead of immediately running dry at 2x.
+                Option("cache-pause-initial", "yes");
+                Option("cache-pause-wait", "3");
                 if (verification) Option("ao", "null"); // Hosted runner has no speakers.
             }
             Check(Native.mpv_initialize(handle));

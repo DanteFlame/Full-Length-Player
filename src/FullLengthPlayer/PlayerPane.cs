@@ -308,6 +308,7 @@ internal sealed class PlayerPane : UserControl
             openToFileLoadedMilliseconds = openMilliseconds,
             paused = Player?.Get("pause") == "yes", buffering = Player?.Get("paused-for-cache") == "yes",
             seeking = Player?.Get("seeking") == "yes",
+            cacheRefillSeconds = Number("cache-pause-wait"),
             speed = Number("speed"), videoWidth = Number("video-params/w"), videoHeight = Number("video-params/h"),
             approximateBufferedSeconds = Number("demuxer-cache-duration"), mainInputBytesPerSecond = Number("cache-speed"),
             droppedDecoderFrames = Number("decoder-frame-drop-count"), droppedOutputFrames = Number("frame-drop-count")
