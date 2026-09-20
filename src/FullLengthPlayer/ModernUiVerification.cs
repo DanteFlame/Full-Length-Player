@@ -9,6 +9,9 @@ internal sealed partial class MainForm
         var a = Reaction.Surface.Handle; var b = Source.Surface.Handle;
         ClientSize = new Size(1000, 700); Location = new Point(0, 0);
         setupButton.Checked = true;
+        var help = sessionBar.Items.OfType<ToolStripDropDownButton>().Single(i => i.Text == "Help");
+        Check(help.DropDownItems.Cast<ToolStripItem>().Select(i => i.Text).Order().SequenceEqual(new[] { "Appearance…", "Playback diagnostics…" }), "Help tools missing");
+        Check(!sessionBar.Items.OfType<ToolStripDropDownButton>().Single(i => i.Text == "Session").DropDownItems.Cast<ToolStripItem>().Any(i => i.Text is "Appearance…" or "Playback diagnostics…"), "Help tools remain in Session");
         for (int page = 0; page < 3; page++)
         {
             ShowSetupPage(page); await Task.Delay(200);

@@ -29,6 +29,10 @@ internal sealed class PlayerPane : UserControl
     private bool network;
     private AudioInput? analysisInput;
     private string? originalYouTube;
+    private int youTubeHeight;
+    private long loadStarted;
+    private int loadGeneration;
+    private double? resolverMilliseconds, openMilliseconds;
     internal bool StartPaused { get; set; } = true;
     internal SavedMedia CaptureMedia()
     {
@@ -38,7 +42,7 @@ internal sealed class PlayerPane : UserControl
         string sid = Player?.Get("sid") ?? "no";
         for (int i = 0; i < (Player?.Number("track-list/count") ?? 0); i++)
             if (Player?.Get($"track-list/{i}/id") == sid && Player.Get($"track-list/{i}/type") == "sub" && Player.Get($"track-list/{i}/external") == "yes") sid = "no";
-        return new(kind, originalYouTube ?? input.Path, input.Referer, input.Headers.ToArray(), Player?.Number("time-pos") ?? 0, Player?.Get("aid") ?? "auto", sid);
+        return new(kind, originalYouTube ?? input.Path, input.Referer, input.Headers.ToArray(), Player?.Number("time-pos") ?? 0, Player?.Get("aid") ?? "auto", sid, youTubeHeight);
     }
     internal AudioInput CaptureAudio() => analysisInput is { } input && Player?.Get("aid") is { } aid && aid != "no"
         ? input with { Track = aid } : throw new InvalidOperationException("Select an audio track in both players first.");
@@ -169,7 +173,7 @@ internal sealed class PlayerPane : UserControl
         if (dialog.ShowDialog(this) != DialogResult.OK || dialog.Source == null) return;
         try
         {
-            if (YouTubeResolver.IsYouTube(dialog.Source.Url)) await LoadYouTube(dialog.Source.Url);
+            if (YouTubeResolver.IsYouTube(dialog.Source.Url)) await LoadYouTube(dialog.Source.Url, maximumHeight: dialog.YouTubeHeight);
             else LoadNetwork(dialog.Source);
         }
         catch (OperationCanceledException) { }
@@ -183,22 +187,28 @@ internal sealed class PlayerPane : UserControl
         ManualTransport?.Invoke(); MediaReplaced?.Invoke();
         Player.Command("stop");
         Player.PollError(); // Discard failures from the previous load.
+        loadStarted = Environment.TickCount64; loadGeneration = Player.FilesLoaded;
+        resolverMilliseconds = openMilliseconds = null; youTubeHeight = 0;
         Player.SetStringList("audio-files", Array.Empty<string>());
         Player.Set("referrer", "");
         Player.SetStringList("http-header-fields", Array.Empty<string>());
         network = remote; playbackError = null; fileName = title;
     }
     internal void CancelResolution() { resolving?.Cancel(); resolving = null; cancelResolve.Visible = false; }
-    internal async Task LoadYouTube(string url, Func<string, CancellationToken, Task<ResolvedVideo>>? resolver = null)
+    internal async Task LoadYouTube(string url, Func<string, CancellationToken, Task<ResolvedVideo>>? resolver = null, int maximumHeight = 0)
     {
         string canonical = YouTubeResolver.CanonicalUrl(url);
+        _ = YouTubeResolver.FormatSelection(maximumHeight);
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         CancelResolution();
         using var request = new CancellationTokenSource(); resolving = request; cancelResolve.Visible = true;
         try
         {
-            var result = await (resolver ?? YouTubeResolver.Resolve)(canonical, request.Token);
+            var result = resolver == null ? await YouTubeResolver.ResolveLimited(canonical, request.Token, maximumHeight) : await resolver(canonical, request.Token);
             request.Token.ThrowIfCancellationRequested();
+            double resolvedMs = clock.Elapsed.TotalMilliseconds;
             LoadResolved(result); originalYouTube = canonical;
+            youTubeHeight = maximumHeight; resolverMilliseconds = resolvedMs;
         }
         finally { if (resolving == request) { resolving = null; cancelResolve.Visible = false; } }
     }
@@ -272,6 +282,8 @@ internal sealed class PlayerPane : UserControl
                 if (item.Text == "+5 s") item.ToolTipText = "Forward five seconds · Shift+L";
             }
         var error = Player.PollError();
+        if (analysisInput != null && openMilliseconds == null && Player.FilesLoaded > loadGeneration)
+            openMilliseconds = Environment.TickCount64 - loadStarted;
         if (error != null) playbackError = fileName == "YouTube video"
             ? "YouTube stream unavailable — open the original video link again to refresh it."
             : network ? "Stream unavailable. Check the direct URL, expiry/access and HTTP headers; open a fresh URL to retry."
@@ -285,6 +297,23 @@ internal sealed class PlayerPane : UserControl
         if (resolving != null) status.Text = "Resolving YouTube… (current playback continues; Cancel YouTube to stop)";
     }
     internal void Shutdown() { CancelResolution(); Player?.Dispose(); Player = null; }
+    internal object DiagnosticSnapshot()
+    {
+        // Explicit allowlist: never include filenames, URLs, headers, titles or native error text.
+        double? Number(string property) => double.TryParse(Player?.Get(property), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && double.IsFinite(value) ? value : null;
+        return new {
+            source = originalYouTube != null ? "youtube" : analysisInput == null ? "empty" : network ? "network" : "local",
+            resolving = resolving != null, failed = playbackError != null,
+            youtubeMaximumHeight = youTubeHeight, resolverMilliseconds,
+            openToFileLoadedMilliseconds = openMilliseconds,
+            paused = Player?.Get("pause") == "yes", buffering = Player?.Get("paused-for-cache") == "yes",
+            seeking = Player?.Get("seeking") == "yes",
+            cacheRefillSeconds = Number("cache-pause-wait"),
+            speed = Number("speed"), videoWidth = Number("video-params/w"), videoHeight = Number("video-params/h"),
+            approximateBufferedSeconds = Number("demuxer-cache-duration"), mainInputBytesPerSecond = Number("cache-speed"),
+            droppedDecoderFrames = Number("decoder-frame-drop-count"), droppedOutputFrames = Number("frame-drop-count")
+        };
+    }
     protected override void Dispose(bool disposing)
     {
         if (disposing) Shutdown();

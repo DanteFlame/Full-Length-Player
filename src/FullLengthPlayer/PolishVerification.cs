@@ -45,6 +45,8 @@ internal sealed partial class MainForm
         CaptureDialog(url, "url"); url.Close();
         using var audio = new AudioSyncDialog(Reaction.CaptureAudio(), Source.CaptureAudio(), 10, 12, 40, 40);
         audio.Show(this); await Task.Delay(100); CaptureDialog(audio, "audio"); audio.Close();
+        using var diagnostics = new PlaybackDiagnostics(Reaction, Source);
+        diagnostics.Show(this); await Task.Delay(100); CaptureDialog(diagnostics, "diagnostics"); diagnostics.Close();
         ActiveControl = null;
     }
 }

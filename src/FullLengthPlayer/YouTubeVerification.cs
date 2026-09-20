@@ -33,6 +33,13 @@ internal static class YouTubeVerification
         for (int i = 0; i < 10; i++) form.Master.Nudge(-0.05);
         await Until(() => form.Master.Offset == -0.25, "Nudging accumulated decimal error.");
         const string id = "BaW_jenozKc", canonical = "https://www.youtube.com/watch?v=BaW_jenozKc";
+        Assert(YouTubeResolver.FormatSelection(0) == "bestvideo+bestaudio/best", "Default quality changed.");
+        foreach (int height in new[] { 480, 720, 1080 })
+        {
+            var arguments = YouTubeResolver.StartInfo(canonical, height).ArgumentList.ToArray();
+            Assert(arguments[Array.IndexOf(arguments, "--format") + 1] == $"bestvideo[height<={height}]+bestaudio/best[height<={height}]", "Quality cap could exceed requested resolution.");
+        }
+        try { YouTubeResolver.FormatSelection(123); throw new Exception("Invalid quality accepted."); } catch (ArgumentOutOfRangeException) { }
         foreach (var url in new[] { "https://youtu.be/" + id + "?si=tracking", canonical + "&list=PL123&t=7", "https://m.youtube.com/shorts/" + id, "https://www.youtube-nocookie.com/embed/" + id })
             Assert(YouTubeResolver.CanonicalUrl(url) == canonical, "YouTube URL normalization failed.");
         Assert(!YouTubeResolver.IsYouTube("https://youtube.com.example.org/watch?v=" + id), "Lookalike host accepted.");
@@ -50,9 +57,20 @@ internal static class YouTubeVerification
         }});
         var split = YouTubeResolver.Parse(json);
         Assert(split.AudioUrl != null, "Separate audio was discarded.");
-        await form.Reaction.LoadYouTube(canonical, (_, _) => Task.FromResult(split));
+        await form.Reaction.LoadYouTube(canonical, (_, _) => Task.FromResult(split), 720);
         await Until(() => a.Number("time-pos") > 0.5 && a.Number("video-params/w") > 0 && a.Number("audio-params/samplerate") > 0, "Split video/audio playback failed.");
         Assert(form.Reaction.CaptureMedia().Kind == "youtube" && form.Reaction.CaptureMedia().Location == canonical, "Session did not preserve the original YouTube link.");
+        var savedMedia = JsonSerializer.Deserialize<SavedMedia>(JsonSerializer.Serialize(form.Reaction.CaptureMedia()))!;
+        Assert(savedMedia.YouTubeHeight == 720, "Session lost YouTube quality cap.");
+        var diagnostic = PlaybackDiagnostics.Report(form.Reaction, form.Source, master: form.Master);
+        Assert(diagnostic.Contains("\"youtubeMaximumHeight\": 720") && !diagnostic.Contains(canonical) && !diagnostic.Contains(server.BaseUrl) && !diagnostic.Contains(media), "Diagnostics missing cap or leaking media identity.");
+        using (var snapshot = JsonDocument.Parse(diagnostic))
+        {
+            Assert(snapshot.RootElement.GetProperty("reaction").GetProperty("openToFileLoadedMilliseconds").ValueKind == JsonValueKind.Number, "File-loaded timing unavailable after load.");
+            Assert(!string.IsNullOrWhiteSpace(snapshot.RootElement.GetProperty("buildVersion").GetString()), "Diagnostics must identify the build.");
+            Assert(snapshot.RootElement.GetProperty("sync").GetProperty("correctionCount").ValueKind == JsonValueKind.Number, "Sync correction diagnostics missing.");
+        }
+        Assert(a.Number("cache-pause-wait") == 3 && a.Get("cache-pause-initial") == "yes", "Network refill policy missing.");
         var splitSample = await AudioAlignment.Decode(form.Reaction.CaptureAudio(), 2, 20, CancellationToken.None);
         Assert(splitSample.Length >= 19 * AudioAlignment.Rate, "Audio analysis lost external YouTube audio.");
         Assert(server.Accepted.Contains("/plain/audio-only.mka"), "MPV did not request external audio.");
@@ -62,8 +80,16 @@ internal static class YouTubeVerification
         await Until(() => Math.Abs(a.Number("time-pos") - 5) < 0.1 && Math.Abs(b.Number("time-pos") - 8) < 0.1 && a.Get("seeking") == "no" && b.Get("seeking") == "no", "Cannot align split playback.");
         form.Master.CaptureAlignment(); form.Master.SeekReaction(15);
         await Until(() => Math.Abs(a.Number("time-pos") - 15) < 0.1 && Math.Abs(b.Number("time-pos") - 18) < 0.1, "Split playback shared seeking failed.");
-        form.SharedSpeed.Set(2); form.Master.TogglePause();
+        form.SharedSpeed.Set(2);
+        Assert(!form.Master.SeekingTogether && a.Get("pause") == "yes" && b.Get("pause") == "yes", "Speed change must not seek or unpause a paused pair.");
+        Assert(Math.Abs(a.Number("time-pos") - 15) < 0.1 && Math.Abs(b.Number("time-pos") - 18) < 0.1, "Speed change moved saved alignment.");
+        form.Master.TogglePause();
         await Until(() => a.Number("time-pos") > 15.5 && b.Number("time-pos") > 18.5, "Split playback shared speed/resume failed.");
+        form.SharedSpeed.Set(1.25);
+        Assert(!form.Master.SeekingTogether && a.Get("pause") == "no" && b.Get("pause") == "no", "Playing speed change must preserve playback without seeking.");
+        form.Master.SeekReaction(10);
+        form.SharedSpeed.Set(2); // Must not restart the in-flight seek or lose resume intent.
+        await Until(() => a.Number("time-pos") > 10 && a.Number("time-pos") < 12 && Math.Abs(b.Number("time-pos") - a.Number("time-pos") - 3) < 0.15 && a.Get("pause") == "no" && b.Get("pause") == "no", "Speed change during seek lost target/alignment/resume intent.");
         // Replacement must cancel pending resolution and cannot resurrect the old URL.
         var pending = form.Reaction.LoadYouTube(canonical, async (_, token) => { await Task.Delay(30000, token); return split; });
         form.Reaction.LoadVideo(media);
