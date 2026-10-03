@@ -74,7 +74,8 @@ internal sealed partial class MainForm
                 number.Value = Math.Clamp(value, number.Minimum, number.Maximum);
         ((AnchorPicker)layoutInputs["Source edge"]).Selected = (SourceAnchor)saved.Anchor;
         Composition.AnchorPosition = (SourceAnchor)saved.Anchor;
-        if (Composition.AnchorRow == 1) Composition.ReactionBottom = saved.ReactionBottom;
+        // Reaction placement is derived from the source in both axes. The old
+        // ReactionBottom field remains readable for backwards-compatible files.
         if (restoreCanvas) canvasChoice!.SelectedIndex = saved.Canvas;
         Reaction.SetVolume(saved.VolumeA); Source.SetVolume(saved.VolumeB);
         Reaction.Player!.Set("mute", saved.MuteA); Source.Player!.Set("mute", saved.MuteB);

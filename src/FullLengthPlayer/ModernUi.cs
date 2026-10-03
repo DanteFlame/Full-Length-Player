@@ -106,7 +106,7 @@ internal sealed partial class MainForm
         Group("Reaction framing", new[] { "Pan X %", "Pan Y %", "Reaction zoom %" });
         compositionBar.Controls.Add(settings);
         foreach (var unused in oldLayout.Where(c => c.Parent == null)) unused.Dispose();
-        compositionBar.Controls.Add(new Label { Text = "Drag a free source corner to resize.\nReaction opposes top/bottom positions.\nLeft/right preserve its vertical anchor.", Width = 300, Height = 60, Margin = new Padding(0, 8, 0, 0) });
+        compositionBar.Controls.Add(new Label { Text = "Drag a free source corner to resize.\nReaction anchors to the opposite edge\nor corner. Pan adjusts from that anchor.", Width = 300, Height = 60, Margin = new Padding(0, 8, 0, 0) });
         setupPages.Add(compositionBar);
         syncBar.Dock = DockStyle.Fill; syncBar.FlowDirection = FlowDirection.TopDown; syncBar.WrapContents = false;
         foreach (Control c in syncBar.Controls)
