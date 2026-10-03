@@ -34,7 +34,7 @@ internal sealed partial class MainForm
                 Check(Composition.ReactionColumn == expected.Item1 && Composition.ReactionRow == expected.Item2, "Incorrect opposing anchor");
                 Check(Composition.ReactionBounds.X == expected.Item1 * (c.Width - Composition.ReactionBounds.Width) / 2, "Reaction lost horizontal anchor");
                 Check(Composition.MaskBounds.Top == expected.Item2 * (c.Height - Composition.MaskBounds.Height) / 2, "Reaction mask lost vertical anchor");
-                int visible = Math.Max(1, (int)Math.Round(Composition.ReactionBounds.Height * .7));
+                int visible = Math.Max(1, (int)Math.Round(Composition.ReactionBounds.Height * (1 - Composition.CropTop - Composition.CropBottom)));
                 int crop = (int)Math.Round(Composition.ReactionBounds.Height * .2);
                 Check(Composition.ReactionBounds.Y == expected.Item2 * (Composition.MaskBounds.Height - visible) / 2 - crop, "Cropped reaction lost vertical anchor");
                 var roundTrip = JsonSerializer.Deserialize<SavedSettings>(JsonSerializer.Serialize(CaptureSettings()))!;
