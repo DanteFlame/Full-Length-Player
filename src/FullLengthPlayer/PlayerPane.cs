@@ -193,6 +193,7 @@ internal sealed class PlayerPane : UserControl
         Player.Set("referrer", "");
         Player.SetStringList("http-header-fields", Array.Empty<string>());
         network = remote; playbackError = null; fileName = title;
+        Player.IsNetworkMedia = remote;
     }
     internal void CancelResolution() { resolving?.Cancel(); resolving = null; cancelResolve.Visible = false; }
     internal async Task LoadYouTube(string url, Func<string, CancellationToken, Task<ResolvedVideo>>? resolver = null, int maximumHeight = 0)
@@ -309,6 +310,7 @@ internal sealed class PlayerPane : UserControl
             paused = Player?.Get("pause") == "yes", buffering = Player?.Get("paused-for-cache") == "yes",
             seeking = Player?.Get("seeking") == "yes",
             cacheRefillSeconds = Number("cache-pause-wait"),
+            positionSeconds = Number("time-pos"), durationSeconds = Number("duration"),
             speed = Number("speed"), videoWidth = Number("video-params/w"), videoHeight = Number("video-params/h"),
             approximateBufferedSeconds = Number("demuxer-cache-duration"), mainInputBytesPerSecond = Number("cache-speed"),
             droppedDecoderFrames = Number("decoder-frame-drop-count"), droppedOutputFrames = Number("frame-drop-count")

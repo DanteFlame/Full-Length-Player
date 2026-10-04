@@ -18,6 +18,10 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     internal int CorrectionCount { get; private set; }
     private readonly SeekCoordinator seeks = new();
     internal bool SeekingTogether => seeks.Waiting;
+    internal bool ResumeAfterSeek => seeks.WillResume;
+    internal bool SeekSuspended => seeks.Suspended;
+    internal object SeekDiagnostics => new { state = seeks.State, waitReason = seeks.WaitReason, elapsedMilliseconds = seeks.ElapsedMilliseconds, timeoutMilliseconds = seeks.TimeoutMilliseconds, resumeWhenReady = seeks.WillResume, reactionTargetSeconds = seeks.ATarget, sourceTargetSeconds = seeks.BTarget };
+    internal void CancelSeek() { seeks.StopWaiting(); SyncStatus = "Seek wait cancelled — both paused"; }
     private long nextCorrection;
     private bool sourceHeld, reactionHeld;
     internal double TimelineStart => Locked ? Math.Min(0, -Offset) : 0;
@@ -58,7 +62,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         Offset = rounded;
         Locked = true; Drift = 0; SyncStatus = "Locked"; Settle();
     }
-    internal void SetOffset(double seconds, double? restoreClock = null, int timeoutMilliseconds = 15000)
+    internal void SetOffset(double seconds, double? restoreClock = null, int? timeoutMilliseconds = null)
     {
         seconds = RoundOffset(seconds);
         var p = Snapshot() ?? throw new InvalidOperationException("Load both videos first.");
@@ -80,7 +84,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
             SyncStatus = seeks.Tick() ?? SyncStatus;
             Settle(); return;
         }
-        if (!Locked) return;
+        if (seeks.Suspended || !Locked) return;
         var p = Snapshot();
         if (p == null) { SyncStatus = "Waiting for media"; return; }
         // Once A ends, B becomes the clock while its remaining content plays.
@@ -141,7 +145,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         }
         Settle();
     }
-    private void SeekLocked(Position p, double reactionTime, int timeoutMilliseconds = 15000)
+    private void SeekLocked(Position p, double reactionTime, int? timeoutMilliseconds = null)
     {
         double target = Math.Clamp(reactionTime, TimelineStart, Math.Max(p.ADuration, p.BDuration - Offset));
         double sourceTarget = target + Offset;
@@ -164,6 +168,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     internal void TogglePause()
     {
         if (seeks.Waiting) { seeks.TogglePause(); return; }
+        if (seeks.Suspended) { seeks.Cancel(); SyncStatus = Locked ? "Locked" : "Unlocked"; }
         var p = Snapshot(); if (p == null) return;
         // Mixed states converge to paused; pressing again starts both.
         string state = (p.A.Get("pause") != "yes" || p.B.Get("pause") != "yes") ? "yes" : "no";

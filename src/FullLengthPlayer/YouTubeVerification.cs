@@ -90,6 +90,7 @@ internal static class YouTubeVerification
         form.Master.SeekReaction(10);
         form.SharedSpeed.Set(2); // Must not restart the in-flight seek or lose resume intent.
         await Until(() => a.Number("time-pos") > 10 && a.Number("time-pos") < 12 && Math.Abs(b.Number("time-pos") - a.Number("time-pos") - 3) < 0.15 && a.Get("pause") == "no" && b.Get("pause") == "no", "Speed change during seek lost target/alignment/resume intent.");
+        await SeekVerification.Run(form);
         // Replacement must cancel pending resolution and cannot resurrect the old URL.
         var pending = form.Reaction.LoadYouTube(canonical, async (_, token) => { await Task.Delay(30000, token); return split; });
         form.Reaction.LoadVideo(media);

@@ -21,8 +21,8 @@ internal sealed partial class MainForm
         diagnostics.Click += (_, _) => { using var dialog = new PlaybackDiagnostics(Reaction, Source, () => RestoreStatus, Master); dialog.ShowDialog(this); };
         sessionBar.Items.Add(diagnostics);
         Controls.Add(sessionBar);
-        Reaction.MediaReplaced += () => { if (!restoringSession) failedRestore = false; };
-        Source.MediaReplaced += () => { if (!restoringSession) failedRestore = false; };
+        Reaction.MediaReplaced += () => { if (!restoringSession) { failedRestore = false; RestoreStatus = "Not restoring (media replaced)"; } };
+        Source.MediaReplaced += () => { if (!restoringSession) { failedRestore = false; RestoreStatus = "Not restoring (media replaced)"; } };
         save.Click += (_, _) =>
         {
             try

@@ -7,6 +7,7 @@ namespace FullLengthPlayer;
 internal sealed class MpvPlayer : IDisposable
 {
     private IntPtr handle;
+    internal bool IsNetworkMedia { get; set; }
     public MpvPlayer(IntPtr window, bool verification = false, string? pcmFile = null, double start = 0, double length = 0)
     {
         handle = Native.mpv_create();

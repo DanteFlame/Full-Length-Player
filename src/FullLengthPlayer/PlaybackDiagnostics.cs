@@ -7,6 +7,7 @@ internal sealed class PlaybackDiagnostics : Form
         applicationVersion = typeof(PlaybackDiagnostics).Assembly.GetName().Version?.ToString(),
         buildVersion = System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(PlaybackDiagnostics).Assembly)?.InformationalVersion,
         sessionRestoreStage = restoreStatus,
+        sharedSeek = master?.SeekDiagnostics,
         sync = master == null ? null : new { locked = master.Locked, offsetSeconds = master.Offset, driftSeconds = master.Drift, correctionCount = master.CorrectionCount, seekingTogether = master.SeekingTogether },
         reaction = reaction.DiagnosticSnapshot(), source = source.DiagnosticSnapshot()
     }, new JsonSerializerOptions { WriteIndented = true });

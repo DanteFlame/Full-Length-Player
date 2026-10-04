@@ -11,6 +11,7 @@ internal sealed partial class MainForm : Form, IMessageFilter
     private PlayerPane? wheelPane;
     private int wheelRemainder;
     private readonly ToolStripButton replayButton = new("What Did They Say? (H)");
+    private readonly ToolStripButton cancelSeekButton = new("Cancel wait") { Visible = false, ToolTipText = "Stop waiting and remain paused" };
     internal SpeedControl SharedSpeed { get; }
     internal SpeedPreferences Preferences { get; } = new();
     private readonly ToolStripDropDownButton speedMenu = new("Speed: 1×");
@@ -127,6 +128,9 @@ internal sealed partial class MainForm : Form, IMessageFilter
         MasterButton("Favorite settings", EditFavorite);
         replayButton.Click += (_, _) => { try { TriggerCommentaryReplay(); } catch (Exception e) { MessageBox.Show(this, e.Message, "Commentary replay"); } };
         masterBar.Items.Add(replayButton);
+        masterBar.Items.Add(cancelSeekButton);
+        cancelSeekButton.Click += (_, _) => RunMaster(Master.CancelSeek);
+        Hud.CancelWaitRequested += () => RunMaster(Master.CancelSeek);
         masterTimeline.MouseDown += (_, _) => masterDragging = true;
         masterTimeline.MouseCaptureChanged += (_, _) => { if (!masterTimeline.Capture) masterDragging = false; };
         masterTimeline.MouseUp += (_, _) => { masterDragging = false; SeekMasterTimeline(); };
@@ -272,7 +276,10 @@ internal sealed partial class MainForm : Form, IMessageFilter
     }
     private void UpdateMaster()
     {
-        if (masterBar.Items.Count > 1) masterBar.Items[1].Text = Reaction.Player?.Get("pause") == "no" || Source.Player?.Get("pause") == "no" ? "Ⅱ Pause" : "▶ Play";
+        if (masterBar.Items.Count > 1) masterBar.Items[1].Text = Master.SeekingTogether
+            ? (Master.ResumeAfterSeek ? "Pause after seek" : "Play when ready")
+            : Reaction.Player?.Get("pause") == "no" || Source.Player?.Get("pause") == "no" ? "Ⅱ Pause" : "▶ Play";
+        cancelSeekButton.Visible = Hud.CancelWaitButton.Visible = Master.SeekingTogether;
         masterTimeline.SharedRange = Hud.Timeline.SharedRange = null;
         if (Master.Locked && Master.Snapshot() is { } overlap)
         {
@@ -285,7 +292,8 @@ internal sealed partial class MainForm : Form, IMessageFilter
         var position = Master.Snapshot();
         double aSpeed = Reaction.Player?.Number("speed") ?? 1, bSpeed = Source.Player?.Number("speed") ?? 1;
         speedMenu.Text = Math.Abs(aSpeed - bSpeed) < 0.001 ? $"Speed: {aSpeed:0.##}×" : $"Speed A/B: {aSpeed:0.##}× / {bSpeed:0.##}×";
-        masterBar.Enabled = masterTimeline.Enabled = syncBar.Enabled = position != null;
+        masterBar.Enabled = position != null || Master.SeekingTogether;
+        masterTimeline.Enabled = syncBar.Enabled = position != null;
         syncStatus.Text = $"{Master.SyncStatus}" + (Master.Locked ? $" • Fixed offset {Master.Offset:+0.00;-0.00;0.00} s • Drift {Master.Drift.GetValueOrDefault():+0.000;-0.000;0.000} s" : "");
         if (displayedOffset != Master.Offset)
         {
@@ -295,9 +303,10 @@ internal sealed partial class MainForm : Form, IMessageFilter
         }
         if (position == null) { masterStatus.Text = "Load both videos to use shared controls"; masterTimeline.Value = 0; return; }
         double elapsed = Master.TimelineTime - Master.TimelineStart, duration = Master.TimelineEnd - Master.TimelineStart;
-        Hud.UpdatePosition(elapsed, duration);
+        Hud.UpdatePosition(elapsed, duration, Master.SeekingTogether || Master.SeekSuspended ? Master.SyncStatus : null);
         if (!masterDragging) masterTimeline.Value = duration > 0 ? (int)Math.Clamp(elapsed / duration * 10000, 0, 10000) : 0;
         masterStatus.Text = $"Shared timeline: {TimeSpan.FromSeconds(Math.Max(0, elapsed)):hh\\:mm\\:ss} / {TimeSpan.FromSeconds(Math.Max(0, duration)):hh\\:mm\\:ss} • { (Master.Locked ? "Alignment locked" : "Alignment unlocked") }";
+        if (Master.SeekingTogether || Master.SeekSuspended) masterStatus.Text = Master.SyncStatus;
     }
     private void SelectPane(PlayerPane pane)
     {

@@ -87,6 +87,7 @@ internal sealed partial class MainForm
         if (!verificationMode && !failedRestore && Master.Snapshot() != null && !Master.SeekingTogether)
             SessionStore.Save(SessionStore.LastPath, CaptureSession());
         Reaction.ClearMedia(); Source.ClearMedia(); Master.Reset(); SharedSpeed.Reset();
+        RestoreStatus = "Not started (new session)";
         Reaction.StartPaused = Source.StartPaused = true;
         ApplySettings(new(new() { ["Source %"] = 70, ["Crop top %"] = 0, ["Crop bottom %"] = 0, ["Reaction zoom %"] = 100, ["Pan X %"] = 0, ["Pan Y %"] = 0 },
             0, ClosestCanvas(Screen.FromControl(this).Bounds.Size), 100, 100, "no", "no", 1), true);
