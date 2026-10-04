@@ -3,7 +3,7 @@ using System.Globalization;
 namespace FullLengthPlayer;
 
 // Owns shared transport and the fixed B = A + offset alignment for the loaded pair.
-internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?> source)
+internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?> source, Func<MpvPlayer, bool>? buffering = null)
 {
     internal const double OffsetStep = 0.05;
     internal static double RoundOffset(double seconds)
@@ -16,11 +16,13 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     internal double? Drift { get; private set; }
     internal string SyncStatus { get; private set; } = "Unlocked — align videos, then lock";
     internal int CorrectionCount { get; private set; }
-    private readonly SeekCoordinator seeks = new();
+    private readonly SeekCoordinator seeks = new(buffering: buffering);
+    private bool Buffering(MpvPlayer p) => buffering?.Invoke(p) ?? p.Get("paused-for-cache") == "yes";
+    internal int BufferHoldCount { get; private set; }
     internal bool SeekingTogether => seeks.Waiting;
     internal bool ResumeAfterSeek => seeks.WillResume;
     internal bool SeekSuspended => seeks.Suspended;
-    internal object SeekDiagnostics => new { state = seeks.State, waitReason = seeks.WaitReason, elapsedMilliseconds = seeks.ElapsedMilliseconds, timeoutMilliseconds = seeks.TimeoutMilliseconds, resumeWhenReady = seeks.WillResume, reactionTargetSeconds = seeks.ATarget, sourceTargetSeconds = seeks.BTarget };
+    internal object SeekDiagnostics => new { state = seeks.State, operation = seeks.Operation, bufferHoldCount = BufferHoldCount, waitReason = seeks.WaitReason, elapsedMilliseconds = seeks.ElapsedMilliseconds, timeoutMilliseconds = seeks.TimeoutMilliseconds, resumeWhenReady = seeks.WillResume, reactionTargetSeconds = seeks.ATarget, sourceTargetSeconds = seeks.BTarget };
     internal void CancelSeek() { seeks.StopWaiting(); SyncStatus = "Seek wait cancelled — both paused"; }
     private long nextCorrection;
     private bool sourceHeld, reactionHeld;
@@ -49,7 +51,7 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
     {
         seeks.Cancel(); sourceHeld = reactionHeld = false; Locked = false; Drift = null; SyncStatus = reason;
     }
-    internal void Reset() { Unlock(); Offset = 0; CorrectionCount = 0; nextCorrection = 0; }
+    internal void Reset() { Unlock(); Offset = 0; CorrectionCount = 0; BufferHoldCount = 0; nextCorrection = 0; }
     internal void CaptureAlignment()
     {
         var p = Snapshot() ?? throw new InvalidOperationException("Load both videos first.");
@@ -75,8 +77,8 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
         SeekLocked(p, restoreClock ?? clock, timeoutMilliseconds);
     }
     internal void Nudge(double seconds) => SetOffset((Locked ? Offset : (Snapshot() is { } p ? p.BTime - p.ATime : 0)) + seconds);
-    private static bool Busy(Position p) => p.A.Get("seeking") == "yes" || p.B.Get("seeking") == "yes"
-        || p.A.Get("paused-for-cache") == "yes" || p.B.Get("paused-for-cache") == "yes";
+    private bool Busy(Position p) => p.A.Get("seeking") == "yes" || p.B.Get("seeking") == "yes"
+        || Buffering(p.A) || Buffering(p.B);
     internal void Tick()
     {
         if (seeks.Waiting)
@@ -119,6 +121,12 @@ internal sealed class MasterTransport(Func<MpvPlayer?> reaction, Func<MpvPlayer?
             return;
         }
         Drift = p.BTime - target;
+        if ((Buffering(p.A) || Buffering(p.B)) && (p.A.Get("pause") != "yes" || p.B.Get("pause") != "yes"))
+        {
+            seeks.HoldForBuffer(p, Offset, Buffering(p.A));
+            BufferHoldCount++;
+            SyncStatus = "Buffering — holding both videos"; Settle(); return;
+        }
         if (Busy(p)) { SyncStatus = "Waiting for playback to settle"; Settle(); return; }
         if (p.A.Get("eof-reached") == "yes")
         {
