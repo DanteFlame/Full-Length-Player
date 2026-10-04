@@ -37,9 +37,10 @@ internal sealed class NetworkSource
 internal sealed class NetworkSourceDialog : Form
 {
     internal NetworkSource? Source { get; private set; }
+    internal int YouTubeHeight { get; private set; }
     internal NetworkSourceDialog(bool reaction)
     {
-        Text = "Open stream URL"; ClientSize = new Size(620, 360);
+        Text = "Open stream URL"; ClientSize = new Size(620, 442);
         FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         var url = new TextBox { Left = 16, Top = 45, Width = 585 };
@@ -47,18 +48,23 @@ internal sealed class NetworkSourceDialog : Form
         var referer = new TextBox { Left = 16, Top = 128, Width = 585, Text = reaction ? NetworkSource.PatreonReferer : "" };
         patreon.CheckedChanged += (_, _) => referer.Text = patreon.Checked ? NetworkSource.PatreonReferer : "";
         var headers = new TextBox { Left = 16, Top = 184, Width = 585, Height = 90, Multiline = true, ScrollBars = ScrollBars.Vertical, AcceptsReturn = true };
-        var open = new Button { Text = "Open stream", Left = 390, Top = 320, Width = 115 };
-        var cancel = new Button { Text = "Cancel", Left = 515, Top = 320, Width = 85, DialogResult = DialogResult.Cancel };
+        var quality = new ComboBox { Left = 16, Top = 338, Width = 260, DropDownStyle = ComboBoxStyle.DropDownList, Enabled = false, AccessibleName = "YouTube maximum video height" };
+        quality.Items.AddRange(new[] { "Best available (unchanged)", "Up to 1080p", "Up to 720p", "Up to 480p" }); quality.SelectedIndex = 0;
+        var open = new Button { Text = "Open stream", Left = 390, Top = 402, Width = 115 };
+        var cancel = new Button { Text = "Cancel", Left = 515, Top = 402, Width = 85, DialogResult = DialogResult.Cancel };
         void LabelAt(string text, int top) => Controls.Add(new Label { Text = text, Left = 16, Top = top, Width = 590, Height = 24 });
         LabelAt("YouTube video link or direct media / .m3u8 URL (not a Patreon post)", 18);
         LabelAt("Referer (editable; leave blank for streams that do not need it)", 106);
         LabelAt("Optional HTTP headers — one Name: value per line", 160);
         LabelAt("Saved sessions protect stream URLs and headers with your Windows account.", 285);
-        Controls.AddRange(new Control[] { url, patreon, referer, headers, open, cancel });
+        LabelAt("YouTube maximum video quality", 314);
+        LabelAt("Lower caps may reduce buffering. No matching format? Try Best available.", 370);
+        Controls.AddRange(new Control[] { url, patreon, referer, headers, quality, open, cancel });
         url.TextChanged += (_, _) =>
         {
             bool youtube = YouTubeResolver.IsYouTube(url.Text);
             patreon.Enabled = referer.Enabled = headers.Enabled = !youtube;
+            quality.Enabled = youtube;
             open.Text = youtube ? "Open YouTube" : "Open stream";
         };
         open.Click += (_, _) =>
@@ -67,6 +73,7 @@ internal sealed class NetworkSourceDialog : Form
             {
                 bool youtube = YouTubeResolver.IsYouTube(url.Text);
                 Source = NetworkSource.Parse(youtube ? YouTubeResolver.CanonicalUrl(url.Text) : url.Text, youtube ? "" : referer.Text, youtube ? "" : headers.Text);
+                YouTubeHeight = youtube ? new[] { 0, 1080, 720, 480 }[quality.SelectedIndex] : 0;
                 DialogResult = DialogResult.OK;
             }
             catch (ArgumentException e) { MessageBox.Show(this, e.Message, "Stream settings"); }

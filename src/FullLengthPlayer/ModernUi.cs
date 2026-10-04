@@ -21,7 +21,9 @@ internal sealed partial class MainForm
         foreach (Control c in new Control[] { playerControls, compositionBar, info, masterTimeline, masterStatus, syncBar, masterBar, sessionBar }) Controls.Remove(c);
         playerControls.Controls.Clear();
         var sessionMenu = new ToolStripDropDownButton("Session");
-        foreach (ToolStripItem item in sessionBar.Items.Cast<ToolStripItem>().ToArray()) sessionMenu.DropDownItems.Add(item);
+        var helpMenu = new ToolStripDropDownButton("Help");
+        foreach (ToolStripItem item in sessionBar.Items.Cast<ToolStripItem>().ToArray())
+            (item.Text is "Appearance…" or "Playback diagnostics…" ? helpMenu : sessionMenu).DropDownItems.Add(item);
         sessionBar.Items.Add(sessionMenu);
         sessionBar.Items.Add(new ToolStripSeparator());
         setupButton.CheckedChanged += (_, _) => { setupWanted = setupButton.Checked; LayoutModernChrome(); };
@@ -29,6 +31,7 @@ internal sealed partial class MainForm
         var fullscreenButton = new ToolStripButton("Fullscreen  ↗");
         fullscreenButton.Click += (_, _) => ToggleFullscreen();
         sessionBar.Items.Add(fullscreenButton);
+        sessionBar.Items.Add(helpMenu);
         sessionBar.Dock = DockStyle.Fill; sessionBar.AutoSize = false;
         sessionBar.LayoutStyle = ToolStripLayoutStyle.HorizontalStackWithOverflow;
         var brand = new Label { Text = "FULL LENGTH PLAYER", Dock = DockStyle.Left, Width = 260, Padding = new Padding(54, 0, 0, 0), TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI Semibold", 11f), AutoEllipsis = true };
@@ -103,7 +106,7 @@ internal sealed partial class MainForm
         Group("Reaction framing", new[] { "Pan X %", "Pan Y %", "Reaction zoom %" });
         compositionBar.Controls.Add(settings);
         foreach (var unused in oldLayout.Where(c => c.Parent == null)) unused.Dispose();
-        compositionBar.Controls.Add(new Label { Text = "Drag a free source corner to resize.\nReaction opposes top/bottom positions.\nLeft/right preserve its vertical anchor.", Width = 300, Height = 60, Margin = new Padding(0, 8, 0, 0) });
+        compositionBar.Controls.Add(new Label { Text = "Drag a free source corner to resize.\nReaction anchors to the opposite edge\nor corner. Pan adjusts from that anchor.", Width = 300, Height = 60, Margin = new Padding(0, 8, 0, 0) });
         setupPages.Add(compositionBar);
         syncBar.Dock = DockStyle.Fill; syncBar.FlowDirection = FlowDirection.TopDown; syncBar.WrapContents = false;
         foreach (Control c in syncBar.Controls)

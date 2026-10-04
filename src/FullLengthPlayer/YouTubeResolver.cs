@@ -24,7 +24,13 @@ internal static class YouTubeResolver
         if (id == null || !Regex.IsMatch(id, "^[A-Za-z0-9_-]{11}$")) throw new ArgumentException("Use a single YouTube video link, not a channel or playlist.");
         return "https://www.youtube.com/watch?v=" + id;
     }
-    internal static ProcessStartInfo StartInfo(string url)
+    internal static string FormatSelection(int height)
+    {
+        if (height == 0) return "bestvideo+bestaudio/best";
+        if (height is not (480 or 720 or 1080)) throw new ArgumentOutOfRangeException(nameof(height));
+        return $"bestvideo[height<={height}]+bestaudio/best[height<={height}]";
+    }
+    internal static ProcessStartInfo StartInfo(string url, int maximumHeight = 0)
     {
         var directory = Path.Combine(AppContext.BaseDirectory, "youtube");
         var info = new ProcessStartInfo(Path.Combine(directory, "yt-dlp.exe"))
@@ -32,12 +38,14 @@ internal static class YouTubeResolver
             UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
             StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8, WorkingDirectory = directory
         };
-        foreach (string arg in new[] { "--ignore-config", "--no-plugin-dirs", "--no-cache-dir", "--no-playlist", "--skip-download", "--dump-single-json", "--no-progress", "--socket-timeout", "15", "--retries", "1", "--extractor-retries", "1", "--js-runtimes", "deno:" + Path.Combine(directory, "deno.exe"), "--format", "bestvideo+bestaudio/best", "--", url }) info.ArgumentList.Add(arg);
+        foreach (string arg in new[] { "--ignore-config", "--no-plugin-dirs", "--no-cache-dir", "--no-playlist", "--skip-download", "--dump-single-json", "--no-progress", "--socket-timeout", "15", "--retries", "1", "--extractor-retries", "1", "--js-runtimes", "deno:" + Path.Combine(directory, "deno.exe"), "--format", FormatSelection(maximumHeight), "--", url }) info.ArgumentList.Add(arg);
         info.Environment["DENO_NO_UPDATE_CHECK"] = "1";
         return info;
     }
     internal static async Task<ResolvedVideo> Resolve(string url, CancellationToken cancellation) =>
         Parse(await RunProcess(StartInfo(CanonicalUrl(url)), cancellation));
+    internal static async Task<ResolvedVideo> ResolveLimited(string url, CancellationToken cancellation, int maximumHeight) =>
+        Parse(await RunProcess(StartInfo(CanonicalUrl(url), maximumHeight), cancellation));
 
     internal static async Task<string> RunProcess(ProcessStartInfo start, CancellationToken cancellation)
     {

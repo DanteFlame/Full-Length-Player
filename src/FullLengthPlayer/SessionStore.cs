@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace FullLengthPlayer;
-internal sealed record SavedMedia(string Kind, string Location, string Referer, string[] Headers, double Position, string Audio, string Subtitles);
+internal sealed record SavedMedia(string Kind, string Location, string Referer, string[] Headers, double Position, string Audio, string Subtitles, int YouTubeHeight = 0);
 internal sealed record SavedSettings(Dictionary<string, decimal> Numbers, int Anchor, int Canvas, double VolumeA, double VolumeB, string MuteA, string MuteB, double Speed, bool ReactionBottom = false);
 internal sealed record SavedSession(int Version, SavedMedia A, SavedMedia B, SavedSettings Settings, bool Locked, double Offset, double Clock);
 internal static class SessionStore
@@ -34,6 +34,7 @@ internal static class SessionStore
     }
     internal static void Validate(SavedMedia media)
     {
+        if (media.YouTubeHeight is not (0 or 480 or 720 or 1080)) throw new InvalidOperationException();
         if (!double.IsFinite(media.Position) || media.Position < 0 || media.Position > 604800 || string.IsNullOrEmpty(media.Location)) throw new InvalidOperationException();
         if (media.Kind == "local") { if (!Path.IsPathFullyQualified(media.Location)) throw new InvalidOperationException(); }
         else if (media.Kind == "youtube") YouTubeResolver.CanonicalUrl(media.Location);

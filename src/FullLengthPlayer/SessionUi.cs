@@ -6,6 +6,7 @@ internal sealed partial class MainForm
     private readonly Dictionary<string, Control> layoutInputs = new();
     private readonly ToolStrip sessionBar = new() { Dock = DockStyle.Top, GripStyle = ToolStripGripStyle.Hidden };
     private bool verificationMode, restoringSession, failedRestore;
+    internal string RestoreStatus { get; private set; } = "Not started";
     private void BuildSessionControls()
     {
         var fresh = new ToolStripButton("New session");
@@ -16,9 +17,12 @@ internal sealed partial class MainForm
         var open = new ToolStripButton("Open session…");
         var resume = new ToolStripButton("Resume last session");
         sessionBar.Items.AddRange(new ToolStripItem[] { fresh, save, open, resume, appearance });
+        var diagnostics = new ToolStripButton("Playback diagnostics…");
+        diagnostics.Click += (_, _) => { using var dialog = new PlaybackDiagnostics(Reaction, Source, () => RestoreStatus, Master); dialog.ShowDialog(this); };
+        sessionBar.Items.Add(diagnostics);
         Controls.Add(sessionBar);
-        Reaction.MediaReplaced += () => { if (!restoringSession) failedRestore = false; };
-        Source.MediaReplaced += () => { if (!restoringSession) failedRestore = false; };
+        Reaction.MediaReplaced += () => { if (!restoringSession) { failedRestore = false; RestoreStatus = "Not restoring (media replaced)"; } };
+        Source.MediaReplaced += () => { if (!restoringSession) { failedRestore = false; RestoreStatus = "Not restoring (media replaced)"; } };
         save.Click += (_, _) =>
         {
             try
@@ -43,6 +47,10 @@ internal sealed partial class MainForm
             if (!File.Exists(path)) { MessageBox.Show(this, "No saved session was found. Load a pair of videos first; the last session is saved when you close the app.", "Open session"); return; }
             await RestoreSession(SessionStore.Read(path));
         }
+        catch (TimeoutException)
+        {
+            if (!IsDisposed) MessageBox.Show(this, "Session restore timed out while " + RestoreStatus + ". Both players remain paused. The saved session is unchanged; retry when the stream responds. Help → Playback diagnostics has more detail.", "Open session");
+        }
         catch
         {
             if (!IsDisposed) MessageBox.Show(this, "Could not restore this session. It must have been saved by this Windows account on this PC. Check that both local files still exist. For an expired or unavailable stream, open a fresh URL and save the session again.", "Open session");
@@ -66,7 +74,8 @@ internal sealed partial class MainForm
                 number.Value = Math.Clamp(value, number.Minimum, number.Maximum);
         ((AnchorPicker)layoutInputs["Source edge"]).Selected = (SourceAnchor)saved.Anchor;
         Composition.AnchorPosition = (SourceAnchor)saved.Anchor;
-        if (Composition.AnchorRow == 1) Composition.ReactionBottom = saved.ReactionBottom;
+        // Reaction placement is derived from the source in both axes. The old
+        // ReactionBottom field remains readable for backwards-compatible files.
         if (restoreCanvas) canvasChoice!.SelectedIndex = saved.Canvas;
         Reaction.SetVolume(saved.VolumeA); Source.SetVolume(saved.VolumeB);
         Reaction.Player!.Set("mute", saved.MuteA); Source.Player!.Set("mute", saved.MuteB);
@@ -101,10 +110,11 @@ internal sealed partial class MainForm
         bool oldStartA = Reaction.StartPaused, oldStartB = Source.StartPaused;
         Replay.Cancel(); Master.Unlock(); Reaction.StartPaused = Source.StartPaused = true;
         var a = Reaction.Player!; var b = Source.Player!;
+        int restoreTimeout = session.A.Kind == "local" && session.B.Kind == "local" ? 45000 : 120000;
         a.Set("pause", "yes"); b.Set("pause", "yes");
         async Task Until(Func<bool> ready)
         {
-            long end = Environment.TickCount64 + 45000;
+            long end = Environment.TickCount64 + restoreTimeout;
             while (true)
             {
                 if (IsDisposed || Disposing) throw new OperationCanceledException();
@@ -117,7 +127,7 @@ internal sealed partial class MainForm
         }
         async Task Load(PlayerPane pane, SavedMedia media)
         {
-            if (media.Kind == "youtube") await pane.LoadYouTube(media.Location);
+            if (media.Kind == "youtube") await pane.LoadYouTube(media.Location, maximumHeight: media.YouTubeHeight);
             else if (media.Kind == "local") pane.LoadVideo(media.Location);
             else pane.LoadNetwork(NetworkSource.Parse(media.Location, media.Referer, string.Join("\n", media.Headers ?? Array.Empty<string>())));
         }
@@ -133,7 +143,11 @@ internal sealed partial class MainForm
             // Drain earlier file-loaded events before recording a generation for this replacement.
             Reaction.UpdatePlayback(); Source.UpdatePlayback();
             int generationA = a.FilesLoaded, generationB = b.FilesLoaded;
-            await Load(Reaction, session.A); await Load(Source, session.B);
+            RestoreStatus = "opening reaction";
+            await Load(Reaction, session.A);
+            RestoreStatus = "opening source";
+            await Load(Source, session.B);
+            RestoreStatus = "waiting for media to load";
             await Until(() => a.FilesLoaded > generationA && b.FilesLoaded > generationB && Master.Snapshot() != null && a.Get("seeking") != "yes" && b.Get("seeking") != "yes");
             a.Set("pause", "yes"); b.Set("pause", "yes");
             ApplySettings(session.Settings, true);
@@ -141,19 +155,26 @@ internal sealed partial class MainForm
             Track(a, "sid", "sub", session.A.Subtitles); Track(b, "sid", "sub", session.B.Subtitles);
             if (session.Locked)
             {
-                Master.SetOffset(session.Offset); Master.SeekReaction(session.Clock);
-                await Until(() => !Master.SeekingTogether);
+                RestoreStatus = "seeking to saved alignment";
+                Master.SetOffset(session.Offset, session.Clock, restoreTimeout);
+                await Until(() => !Master.SeekingTogether && a.Get("seeking") != "yes" && b.Get("seeking") != "yes"
+                    && Math.Abs(a.Number("time-pos") - Math.Clamp(session.Clock, 0, a.Number("duration"))) <= .2
+                    && Math.Abs(b.Number("time-pos") - Math.Clamp(session.Clock + session.Offset, 0, b.Number("duration"))) <= .2);
                 if (!Master.Locked || Math.Abs(Master.TimelineTime - Math.Clamp(session.Clock, Master.TimelineStart, Master.TimelineEnd)) > .2)
                     throw new InvalidOperationException("Saved alignment could not be restored.");
             }
             else
             {
+                RestoreStatus = "seeking to saved independent positions";
                 a.Command("seek", Math.Clamp(session.A.Position, 0, a.Number("duration")).ToString(CultureInfo.InvariantCulture), "absolute+exact");
                 b.Command("seek", Math.Clamp(session.B.Position, 0, b.Number("duration")).ToString(CultureInfo.InvariantCulture), "absolute+exact");
                 await Task.Delay(100);
-                await Until(() => a.Get("seeking") != "yes" && b.Get("seeking") != "yes");
+                await Until(() => a.Get("seeking") != "yes" && b.Get("seeking") != "yes"
+                    && Math.Abs(a.Number("time-pos") - Math.Clamp(session.A.Position, 0, a.Number("duration"))) <= .2
+                    && Math.Abs(b.Number("time-pos") - Math.Clamp(session.B.Position, 0, b.Number("duration"))) <= .2);
             }
             a.Set("pause", "yes"); b.Set("pause", "yes"); failedRestore = false;
+            RestoreStatus = "Completed (paused)";
         }
         catch
         {

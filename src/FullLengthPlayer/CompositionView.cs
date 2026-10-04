@@ -13,17 +13,10 @@ internal sealed class CompositionView : Panel
     internal Rectangle ReactionBounds => reaction.Surface.Bounds;
     internal double CanvasAspect { get; set; } = 16.0 / 9;
     internal double SourceFraction { get; set; } = 0.7;
-    private SourceAnchor sourceAnchor;
-    internal SourceAnchor AnchorPosition
-    {
-        get => sourceAnchor;
-        set
-        {
-            sourceAnchor = value;
-            if (AnchorRow != 1) ReactionBottom = AnchorRow == 0;
-        }
-    }
-    internal bool ReactionBottom { get; set; }
+    internal SourceAnchor AnchorPosition { get; set; }
+    internal int ReactionColumn => 2 - AnchorColumn;
+    internal int ReactionRow => 2 - AnchorRow;
+    internal bool ReactionBottom => ReactionRow == 2;
     internal bool TopAnchor { get => AnchorPosition == SourceAnchor.Top; set => AnchorPosition = value ? SourceAnchor.Top : SourceAnchor.Bottom; }
     internal int AnchorColumn => AnchorPosition switch { SourceAnchor.TopLeft or SourceAnchor.Left or SourceAnchor.BottomLeft => 0, SourceAnchor.TopRight or SourceAnchor.Right or SourceAnchor.BottomRight => 2, _ => 1 };
     internal int AnchorRow => AnchorPosition switch { SourceAnchor.TopLeft or SourceAnchor.Top or SourceAnchor.TopRight => 0, SourceAnchor.Left or SourceAnchor.Right => 1, _ => 2 };
@@ -88,8 +81,8 @@ internal sealed class CompositionView : Panel
         int top = (int)Math.Round(rh * CropTop);
         int visible = Math.Max(1, (int)Math.Round(rh * (1 - CropTop - CropBottom)));
         int maskHeight = Math.Min(height, visible);
-        mask.Bounds = new Rectangle(0, ReactionBottom ? height - maskHeight : 0, width, maskHeight);
-        reaction.Surface.Bounds = new Rectangle((width - rw) / 2 + (int)(PanX * width), (ReactionBottom ? maskHeight - visible - top : -top) + (int)(PanY * height), rw, rh);
+        mask.Bounds = new Rectangle(0, ReactionRow * (height - maskHeight) / 2, width, maskHeight);
+        reaction.Surface.Bounds = new Rectangle(ReactionColumn * (width - rw) / 2 + (int)(PanX * width), ReactionRow * (maskHeight - visible) / 2 - top + (int)(PanY * height), rw, rh);
         int sw = Math.Max(1, (int)Math.Round(Math.Min(width * SourceFraction, height * Aspect(source))));
         int sh = Math.Max(1, (int)Math.Round(sw / Aspect(source)));
         source.Surface.Bounds = new Rectangle(AnchorColumn * (width - sw) / 2, AnchorRow * (height - sh) / 2, sw, sh);
